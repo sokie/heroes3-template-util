@@ -144,7 +144,11 @@ def _treasure_value(zone: Zone) -> int:
 
 def _content_rows(zone: Zone) -> int:
     rows = 0
-    if _has_towns(zone):
+    pt = zone.player_towns
+    nt = zone.neutral_towns
+    if _int_val(pt.min_castles) > 0 or _int_val(pt.min_towns) > 0:
+        rows += 1
+    if _int_val(nt.min_castles) > 0 or _int_val(nt.min_towns) > 0:
         rows += 1
     mines = _active_mines(zone)
     if mines:
@@ -275,43 +279,70 @@ class ZoneItem(QGraphicsRectItem):
         cy = oy + _HEADER_H
         cx = ox
 
-        # Towns/Castles row - show each count with its own castle icon
+        # Towns/Castles rows - player row labeled "P:", neutral labeled "N:"
         if _has_towns(zone):
             pt = zone.player_towns
             nt = zone.neutral_towns
-            ix = cx
+            label_font = QFont("Helvetica", 9, QFont.Weight.Bold)
+            fg = QColor(255, 255, 255) if dark_bg else QColor(30, 30, 30)
+            label_w = 18
 
-            # Player castles
-            p_c = _int_val(pt.min_castles)
-            if p_c > 0:
-                draw_castle(painter, ix, cy, _ICO)
-                draw_value_label(painter, ix + _ICO + 3, cy, 22, _ICO,
-                                 str(p_c), 11, dark_bg)
-                ix += _CELL_W
+            has_player = (
+                _int_val(pt.min_castles) > 0 or _int_val(pt.min_towns) > 0
+            )
+            has_neutral = (
+                _int_val(nt.min_castles) > 0 or _int_val(nt.min_towns) > 0
+            )
 
-            # Player towns
-            p_t = _int_val(pt.min_towns)
-            if p_t > 0:
-                draw_town(painter, ix, cy, _ICO)
-                draw_value_label(painter, ix + _ICO + 3, cy, 22, _ICO,
-                                 str(p_t), 11, dark_bg)
-                ix += _CELL_W
+            # Player buildings row
+            if has_player:
+                painter.setFont(label_font)
+                painter.setPen(QPen(fg))
+                painter.drawText(
+                    QRectF(cx, cy, label_w, _ICO),
+                    Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+                    "P:",
+                )
+                ix = cx + label_w
 
-            # Neutral castles
-            n_c = _int_val(nt.min_castles)
-            if n_c > 0:
-                draw_castle(painter, ix, cy, _ICO)
-                draw_value_label(painter, ix + _ICO + 3, cy, 22, _ICO,
-                                 str(n_c), 11, dark_bg)
-                ix += _CELL_W
+                p_c = _int_val(pt.min_castles)
+                if p_c > 0:
+                    draw_castle(painter, ix, cy, _ICO)
+                    draw_value_label(painter, ix + _ICO + 3, cy, 22, _ICO,
+                                     str(p_c), 11, dark_bg)
+                    ix += _CELL_W
 
-            # Neutral towns
-            n_t = _int_val(nt.min_towns)
-            if n_t > 0:
-                draw_town(painter, ix, cy, _ICO)
-                draw_value_label(painter, ix + _ICO + 3, cy, 22, _ICO,
-                                 str(n_t), 11, dark_bg)
-            cy += _ROW_H
+                p_t = _int_val(pt.min_towns)
+                if p_t > 0:
+                    draw_town(painter, ix, cy, _ICO)
+                    draw_value_label(painter, ix + _ICO + 3, cy, 22, _ICO,
+                                     str(p_t), 11, dark_bg)
+                cy += _ROW_H
+
+            # Neutral buildings row
+            if has_neutral:
+                painter.setFont(label_font)
+                painter.setPen(QPen(fg))
+                painter.drawText(
+                    QRectF(cx, cy, label_w, _ICO),
+                    Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+                    "N:",
+                )
+                ix = cx + label_w
+
+                n_c = _int_val(nt.min_castles)
+                if n_c > 0:
+                    draw_castle(painter, ix, cy, _ICO)
+                    draw_value_label(painter, ix + _ICO + 3, cy, 22, _ICO,
+                                     str(n_c), 11, dark_bg)
+                    ix += _CELL_W
+
+                n_t = _int_val(nt.min_towns)
+                if n_t > 0:
+                    draw_town(painter, ix, cy, _ICO)
+                    draw_value_label(painter, ix + _ICO + 3, cy, 22, _ICO,
+                                     str(n_t), 11, dark_bg)
+                cy += _ROW_H
 
         # Resource mines in grid
         mines = _active_mines(zone)

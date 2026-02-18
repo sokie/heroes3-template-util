@@ -221,6 +221,9 @@ class ZonePanel(QWidget):
             self._owner.blockSignals(True)
             self._owner.setCurrentIndex(0)
             self._owner.blockSignals(False)
+        # Enable player towns only for Human Start / Computer Start
+        is_player_zone = index in (0, 1)
+        self._player_towns_group.setEnabled(is_player_zone)
         self._on_change()
 
     def _on_owner_changed(self, index: int) -> None:
@@ -238,7 +241,8 @@ class ZonePanel(QWidget):
         # Player Towns & Castles
         h = QHBoxLayout()
 
-        pg = QGroupBox("Player Towns && Castles")
+        self._player_towns_group = QGroupBox("Player Towns && Castles")
+        pg = self._player_towns_group
         pl = QGridLayout(pg)
         pl.addWidget(QLabel("Minimum Towns"), 0, 0)
         self._pt_min_towns = _make_spinbox()
@@ -326,6 +330,13 @@ class ZonePanel(QWidget):
             self._bind_check(cb, z, "town_types", dict_key=canonical)
 
         self._bind_check(self._towns_same_type, z, "towns_same_type")
+
+        # Disable player towns for non-player zones (treasure, junction)
+        is_player_zone = (
+            z.human_start.strip().lower() == "x"
+            or z.computer_start.strip().lower() == "x"
+        )
+        self._player_towns_group.setEnabled(is_player_zone)
 
     # ── Tab 3: Content ───────────────────────────────────────────────────
 
