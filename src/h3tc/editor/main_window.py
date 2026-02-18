@@ -35,6 +35,7 @@ from h3tc.models import (
     Zone,
     ZoneOptions,
 )
+from h3tc.enums import MONSTER_FACTIONS_SOD, TERRAINS_SOD
 from h3tc.parsers.sod import SodParser
 from h3tc.writers.sod import SodWriter
 
@@ -325,9 +326,63 @@ class MainWindow(QMainWindow):
         if path:
             self._save_to(Path(path))
 
+    def _validate_and_fix(self) -> list[str]:
+        """Validate all zones and auto-fix missing terrain/monster defaults.
+
+        Returns list of fix descriptions applied.
+        """
+        fixes = []
+        if not self._state.pack:
+            return fixes
+
+        for tm in self._state.pack.maps:
+            for zone in tm.zones:
+                zid = zone.id.strip()
+
+                # Check terrain: at least one must be enabled
+                has_terrain = any(
+                    zone.terrains.get(t, "").strip().lower() == "x"
+                    for t in TERRAINS_SOD
+                )
+                # terrain_match counts as having terrain configured
+                if not has_terrain and zone.terrain_match.strip().lower() != "x":
+                    zone.terrains["Dirt"] = "x"
+                    fixes.append(
+                        f"Zone {zid}: no terrain enabled, added Dirt"
+                    )
+
+                # Check monsters: at least one faction must be enabled
+                has_monster = any(
+                    zone.monster_factions.get(f, "").strip().lower() == "x"
+                    for f in MONSTER_FACTIONS_SOD
+                )
+                # monster_match counts as having monsters configured
+                if not has_monster and zone.monster_match.strip().lower() != "x":
+                    zone.monster_factions["Neutral"] = "x"
+                    fixes.append(
+                        f"Zone {zid}: no monster faction enabled, added Neutral"
+                    )
+
+        return fixes
+
     def _save_to(self, filepath: Path) -> None:
         if not self._state.pack:
             return
+
+        # Validate and auto-fix before saving
+        fixes = self._validate_and_fix()
+        if fixes:
+            fix_text = "\n".join(f"  - {f}" for f in fixes)
+            QMessageBox.information(
+                self,
+                "Auto-corrections Applied",
+                f"The following issues were fixed before saving:\n\n{fix_text}",
+            )
+            # Refresh canvas to reflect changes
+            if self._state.current_map:
+                for zone in self._state.current_map.zones:
+                    self._scene.refresh_zone(zone)
+
         try:
             self._writer.write(self._state.pack, filepath)
 
@@ -549,10 +604,10 @@ def _make_default_zone(
         min_mines={},
         mine_density={},
         terrain_match="x" if (human_start or computer_start) else "",
-        terrains={},
-        monster_strength="2" if treasure else "",
+        terrains={"Dirt": "x"},
+        monster_strength="weak" if treasure else "",
         monster_match="",
-        monster_factions={},
+        monster_factions={"Neutral": "x"},
         treasure_tiers=[
             TreasureTier(low="12000", high="22000", density="1"),
             TreasureTier(low="5000", high="16000", density="6"),

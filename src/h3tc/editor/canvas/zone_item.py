@@ -57,29 +57,27 @@ _PLAYER_COLORS = {
 
 
 def _zone_color(zone: Zone) -> QColor:
-    """Zone color: player start = player color, treasure = gray/gold, junction = gold."""
+    """Zone color based on type and treasure value.
+
+    Player start = player color.
+    Non-player zones colored by treasure value:
+      0-99   = gray
+      100-199 = silver
+      200+   = gold
+    """
     if zone.human_start == "x":
         owner = zone.ownership.strip()
         return _PLAYER_COLORS.get(owner, QColor(100, 149, 237))
     if zone.computer_start == "x":
         return QColor(100, 100, 100)
-    if zone.treasure == "x":
-        # Gold if has significant treasure, otherwise gray
-        if _has_rich_treasure(zone):
-            return QColor(200, 170, 100)
-        return QColor(160, 160, 160)
-    if zone.junction == "x":
-        return QColor(205, 175, 55)
-    return QColor(170, 170, 170)
 
-
-def _has_rich_treasure(zone: Zone) -> bool:
-    """Check if zone has rich treasure (high tier values set)."""
-    for tier in zone.treasure_tiers:
-        high = _int_val(tier.high)
-        if high >= 5000:
-            return True
-    return False
+    # All non-player zones: color by treasure value
+    tval = _treasure_value(zone)
+    if tval >= 200:
+        return QColor(200, 170, 100)   # Gold
+    if tval >= 100:
+        return QColor(185, 190, 200)   # Silver
+    return QColor(160, 160, 160)       # Gray
 
 
 def _int_val(s: str) -> int:
