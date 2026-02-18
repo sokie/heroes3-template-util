@@ -22,11 +22,11 @@ jobs:
             artifact_name: h3tc-editor-windows-amd64
             executable_name: h3tc-editor.exe
             archive_ext: zip
-          - os: macos-13
+          - os: macos-15-intel
             artifact_name: h3tc-editor-macos-intel
             executable_name: h3tc-editor
             archive_ext: tar.gz
-          - os: macos-latest
+          - os: macos-15
             artifact_name: h3tc-editor-macos-arm64
             executable_name: h3tc-editor
             archive_ext: tar.gz
