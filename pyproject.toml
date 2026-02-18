@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "h3tc"
+version = "0.1.0"
+description = "Heroes of Might and Magic 3 random map template converter (SOD <-> HOTA)"
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.0",
+    "click>=8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+]
+gui = [
+    "PySide6>=6.5",
+]
+
+[project.scripts]
+h3tc = "h3tc.cli:main"
+h3tc-editor = "h3tc.editor:launch"
+
+[tool.setuptools.packages.find]
+where = ["src"]
