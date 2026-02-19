@@ -26,12 +26,12 @@ def cli():
 @click.argument("output_file", type=click.Path(path_type=Path))
 @click.option(
     "--from", "from_format",
-    type=click.Choice(["sod", "hota", "hota18"], case_sensitive=False),
+    type=click.Choice(["sod", "hota17", "hota18"], case_sensitive=False),
     help="Input format (auto-detected from extension if omitted).",
 )
 @click.option(
     "--to", "to_format",
-    type=click.Choice(["sod", "hota", "hota18"], case_sensitive=False),
+    type=click.Choice(["sod", "hota17", "hota18"], case_sensitive=False),
     required=True,
     help="Output format.",
 )
@@ -41,7 +41,7 @@ def cli():
     help="Pack name for SOD->HOTA conversion.",
 )
 def convert(input_file: Path, output_file: Path, from_format: str, to_format: str, pack_name: str):
-    """Convert a template file between SOD and HOTA formats."""
+    """Convert a template file between SOD, HOTA 1.7.x, and HOTA 1.8.x formats."""
     # Auto-detect input format
     if not from_format:
         parser = detect_format(input_file)
@@ -56,20 +56,20 @@ def convert(input_file: Path, output_file: Path, from_format: str, to_format: st
 
     # Convert if needed
     if from_format != to_format:
-        if from_format == "sod" and to_format == "hota":
+        if from_format == "sod" and to_format == "hota17":
             name = pack_name or input_file.stem
             pack = sod_to_hota(pack, pack_name=name)
         elif from_format == "sod" and to_format == "hota18":
             name = pack_name or input_file.stem
             pack = sod_to_hota(pack, pack_name=name)
             pack = hota_to_hota18(pack)
-        elif from_format == "hota" and to_format == "sod":
+        elif from_format == "hota17" and to_format == "sod":
             pack = hota_to_sod(pack)
-        elif from_format == "hota" and to_format == "hota18":
+        elif from_format == "hota17" and to_format == "hota18":
             pack = hota_to_hota18(pack)
         elif from_format == "hota18" and to_format == "sod":
             pack = hota_to_sod(pack)
-        elif from_format == "hota18" and to_format == "hota":
+        elif from_format == "hota18" and to_format == "hota17":
             pack = hota18_to_hota(pack)
     else:
         click.echo(f"Rewriting {from_format.upper()} -> {to_format.upper()}")
@@ -89,7 +89,7 @@ def convert(input_file: Path, output_file: Path, from_format: str, to_format: st
 @cli.command()
 @click.argument("file", required=False, type=click.Path(path_type=Path))
 def editor(file: Path | None):
-    """Launch the visual SOD template editor."""
+    """Launch the visual template editor. Opens any format (SOD, HOTA 1.7.x, HOTA 1.8.x) with auto-detection."""
     try:
         from h3tc.editor import launch
     except ImportError:

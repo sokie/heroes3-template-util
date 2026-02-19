@@ -62,6 +62,13 @@ def test_hota18_format_detection(hota18_filepath):
     assert parser.format_id == "hota18"
 
 
+def test_format_detection_all_formats(hota18_filepath, hota_filepath, sod_filepath):
+    """Verify auto-detection works for all three formats."""
+    assert detect_format(sod_filepath).format_id == "sod"
+    assert detect_format(hota_filepath).format_id == "hota17"
+    assert detect_format(hota18_filepath).format_id == "hota18"
+
+
 # ── Roundtrip ────────────────────────────────────────────────────────────
 
 

@@ -1,6 +1,6 @@
 # h3tc - Heroes of Might and Magic 3 Template Converter
 
-Convert random map generator (RMG) template packs between **SOD** (Shadow of Death) and **HOTA** (Horn of the Abyss) formats.
+Convert random map generator (RMG) template packs between **SOD** (Shadow of Death), **HOTA 1.7.x**, and **HOTA 1.8.x** (Horn of the Abyss) formats.
 
 ## Requirements
 
@@ -12,34 +12,57 @@ Convert random map generator (RMG) template packs between **SOD** (Shadow of Dea
 pip install -e .
 ```
 
+## Supported formats
+
+| Format | ID | Extension | Columns | Description |
+|--------|----|-----------|---------|-------------|
+| SOD | `sod` | `.txt` | 85 (padded to 183) | Shadow of Death — 9 town factions |
+| HOTA 1.7.x | `hota17` | `.h3t` | 138 | Horn of the Abyss — 11 town factions (adds Cove, Factory) |
+| HOTA 1.8.x | `hota18` | `.h3t` | 140 | Horn of the Abyss — 12 town factions (adds Bulwark) |
+
 ## Usage
 
 ### CLI
 
 ```bash
-# Convert SOD to HOTA
-h3tc convert templates/sod_pack.txt output.h3t --to hota --pack-name "My Pack"
+# Convert SOD to HOTA 1.7.x
+h3tc convert input.txt output.h3t --to hota17 --pack-name "My Pack"
 
-# Convert HOTA to SOD
-h3tc convert templates/hota_pack.h3t output.txt --to sod
+# Convert SOD to HOTA 1.8.x
+h3tc convert input.txt output.h3t --to hota18 --pack-name "My Pack"
+
+# Convert HOTA 1.7.x to SOD
+h3tc convert input.h3t output.txt --to sod
+
+# Convert HOTA 1.8.x to SOD
+h3tc convert input.h3t output.txt --to sod
+
+# Convert between HOTA versions
+h3tc convert input.h3t output.h3t --to hota18   # 1.7.x → 1.8.x
+h3tc convert input.h3t output.h3t --to hota17   # 1.8.x → 1.7.x
 
 # Rewrite (normalize) a file in the same format
-h3tc convert input.txt output.txt --to sod
+h3tc convert input.h3t output.h3t --to hota17
+
+# Auto-detect input format (default behavior)
+h3tc convert templates/jebus_converted.h3t output.txt --to sod
 ```
 
 Or run as a module:
 
 ```bash
-python -m h3tc convert input.txt output.h3t --to hota
+python -m h3tc convert input.txt output.h3t --to hota17
 ```
 
 ### Options
 
 | Option | Description |
 |--------|-------------|
-| `--to` (required) | Output format: `sod` or `hota` |
-| `--from` | Input format (auto-detected from extension: `.txt` = SOD, `.h3t` = HOTA) |
+| `--to` (required) | Output format: `sod`, `hota17`, or `hota18` |
+| `--from` | Input format (auto-detected if omitted) |
 | `--pack-name` | Pack name for SOD→HOTA conversion (defaults to input filename) |
+
+The input format is auto-detected by inspecting file content — you rarely need `--from`.
 
 ### Python API
 
@@ -47,31 +70,41 @@ python -m h3tc convert input.txt output.h3t --to hota
 from pathlib import Path
 from h3tc.parsers.sod import SodParser
 from h3tc.parsers.hota import HotaParser
+from h3tc.parsers.hota18 import Hota18Parser
 from h3tc.writers.sod import SodWriter
 from h3tc.writers.hota import HotaWriter
+from h3tc.writers.hota18 import Hota18Writer
 from h3tc.converters.sod_to_hota import sod_to_hota
 from h3tc.converters.hota_to_sod import hota_to_sod
+from h3tc.converters.hota_to_hota18 import hota_to_hota18
+from h3tc.converters.hota18_to_hota import hota18_to_hota
+from h3tc.formats import detect_format
 
-# Parse
-parser = SodParser()
-pack = parser.parse(Path("template.txt"))
+# Auto-detect and parse any format
+parser = detect_format(Path("template.h3t"))
+pack = parser.parse(Path("template.h3t"))
 
-# Convert
+# Convert SOD → HOTA 1.7.x
 hota_pack = sod_to_hota(pack, pack_name="My Pack")
 
+# Convert HOTA 1.7.x → HOTA 1.8.x
+hota18_pack = hota_to_hota18(hota_pack)
+
 # Write
-writer = HotaWriter()
-writer.write(hota_pack, Path("output.h3t"))
+Hota18Writer().write(hota18_pack, Path("output.h3t"))
 ```
 
 ## Visual Template Editor
 
 A graphical editor for SOD templates built with PySide6. View and edit zones, connections, and all template properties visually.
 
+The editor auto-detects and opens any supported format (SOD, HOTA 1.7.x, HOTA 1.8.x). Non-SOD formats are automatically converted to SOD for editing.
+
 ![Editor UI](screenshots/editor-ui.png)
 
 ### Features
 
+- Opens any format — SOD, HOTA 1.7.x, and HOTA 1.8.x files are all auto-detected
 - Zoomable, pannable canvas with drag-to-move zones
 - Zone icons showing treasure value, monster strength, castles, towns, and resource mines
 - Player zones colored by player (blue, red, green, purple, etc.)
@@ -93,8 +126,10 @@ pip install -e ".[gui]"
 Launch from the CLI:
 
 ```bash
-# Open a template file directly
+# Open any template file directly (format auto-detected)
 h3tc editor templates/sod_complete/Jebus\ Cross/rmg.txt
+h3tc editor templates/hota_original_template_pack.h3t
+h3tc editor templates/jebus_converted.h3t
 
 # Or launch and use File > Open
 h3tc editor
@@ -103,12 +138,12 @@ h3tc editor
 Or run as a module:
 
 ```bash
-python -m h3tc editor path/to/rmg.txt
+python -m h3tc editor path/to/template
 ```
 
 ## What gets converted
 
-### SOD → HOTA
+### SOD → HOTA 1.7.x
 
 Shared fields (zone data, connections, mines, terrains, monsters, treasure) are preserved exactly. HOTA-only fields receive sensible defaults:
 
@@ -120,14 +155,30 @@ Shared fields (zone data, connections, mines, terrains, monsters, treasure) are 
 - **Zone options**: `placement=ground`, `monsters_disposition_standard=3`, `monsters_joining_percentage=1`, `monsters_join_only_for_money=x`
 - **Connection extras**: `road=+`, `type=ground`
 
+### HOTA 1.7.x → HOTA 1.8.x
+
+Adds the Bulwark faction:
+
+- **Town types**: Bulwark added (enabled if all existing factions are enabled, empty otherwise)
+- **Monster factions**: Bulwark added (same logic)
+- **Field counts**: town count updated from 11 to 12
+
+### HOTA 1.8.x → HOTA 1.7.x
+
+Removes the Bulwark faction:
+
+- **Town types**: Bulwark removed
+- **Monster factions**: Bulwark removed
+- **Field counts**: town count updated from 12 to 11
+
 ### HOTA → SOD
 
 HOTA-only fields are stripped:
 
 - Pack metadata, field counts, map options removed
-- Cove, Factory town types removed
+- Cove, Factory (and Bulwark for 1.8.x) town types removed
 - Highlands, Wasteland terrains removed
-- Conflux, Cove, Factory monster factions removed; Forge column added as `x`
+- Conflux, Cove, Factory (and Bulwark for 1.8.x) monster factions removed; Forge column added as `x`
 - Zone options removed
 - Connection road, type, fictive, portal repulsion removed
 
@@ -138,7 +189,7 @@ pip install -e ".[dev]"
 pytest
 ```
 
-Tests validate roundtrip fidelity against 60 SOD and 36 HOTA template files.
+Tests validate roundtrip fidelity against 60 SOD and 36 HOTA template files, plus HOTA 1.8.x parsing, roundtrip, and all conversion paths.
 
 ## Project structure
 
@@ -147,16 +198,21 @@ src/h3tc/
 ├── cli.py              # CLI entry point
 ├── models.py           # Format-agnostic Pydantic data models
 ├── enums.py            # Faction, terrain, resource lists
-├── constants.py        # Column index mappings (SOD: 85 cols, HOTA: 138 cols)
+├── constants.py        # Column index mappings (SOD: 85, HOTA17: 138, HOTA18: 140)
+├── formats.py          # Format detection and parser registry
 ├── parsers/
 │   ├── sod.py          # SOD format parser
-│   └── hota.py         # HOTA format parser
+│   ├── hota.py         # HOTA 1.7.x format parser
+│   └── hota18.py       # HOTA 1.8.x format parser
 ├── writers/
 │   ├── sod.py          # SOD format writer
-│   └── hota.py         # HOTA format writer
+│   ├── hota.py         # HOTA 1.7.x format writer
+│   └── hota18.py       # HOTA 1.8.x format writer
 ├── converters/
-│   ├── sod_to_hota.py  # SOD → HOTA conversion
-│   └── hota_to_sod.py  # HOTA → SOD conversion
+│   ├── sod_to_hota.py      # SOD → HOTA 1.7.x conversion
+│   ├── hota_to_sod.py      # HOTA → SOD conversion
+│   ├── hota_to_hota18.py   # HOTA 1.7.x → 1.8.x conversion
+│   └── hota18_to_hota.py   # HOTA 1.8.x → 1.7.x conversion
 └── editor/             # Visual template editor (PySide6)
     ├── __init__.py     # launch() entry point
     ├── main_window.py  # Main window, toolbar, panels

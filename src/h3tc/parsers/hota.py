@@ -23,7 +23,7 @@ from h3tc.parsers.base import BaseParser
 
 
 class HotaParser(BaseParser):
-    format_id = "hota"
+    format_id = "hota17"
     format_name = "HOTA 1.7.x"
     min_columns = HotaCol.TOTAL
 

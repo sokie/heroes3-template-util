@@ -11,7 +11,7 @@ from h3tc.writers.base import BaseWriter
 
 
 class HotaWriter(BaseWriter):
-    format_id = "hota"
+    format_id = "hota17"
     format_name = "HOTA 1.7.x"
 
     _col = HotaCol
