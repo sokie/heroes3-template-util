@@ -1,8 +1,8 @@
 """Zoomable, pannable graphics view with grid background."""
 
-from PySide6.QtCore import Qt, QRectF
+from PySide6.QtCore import Qt, QRectF, QEvent
 from PySide6.QtGui import QColor, QPainter, QPen, QWheelEvent, QMouseEvent
-from PySide6.QtWidgets import QGraphicsView
+from PySide6.QtWidgets import QGestureEvent, QGraphicsView, QPinchGesture
 
 from h3tc.editor.constants import (
     GRID_COLOR,
@@ -16,7 +16,7 @@ from h3tc.editor.constants import (
 
 
 class TemplateView(QGraphicsView):
-    """Graphics view with zoom (Ctrl+scroll), pan (middle-drag), and grid."""
+    """Graphics view with zoom (pinch/Ctrl+scroll), pan (two-finger/middle-drag), and grid."""
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -34,6 +34,9 @@ class TemplateView(QGraphicsView):
         self.setViewportUpdateMode(QGraphicsView.ViewportUpdateMode.FullViewportUpdate)
         self.setBackgroundBrush(QColor(245, 245, 245))
         self.setMinimumSize(400, 300)
+
+        # Enable pinch gesture recognition
+        self.grabGesture(Qt.GestureType.PinchGesture)
 
     def drawBackground(self, painter: QPainter, rect: QRectF) -> None:
         super().drawBackground(painter, rect)
@@ -69,17 +72,39 @@ class TemplateView(QGraphicsView):
                 painter.drawLine(int(rect.left()), y, int(rect.right()), y)
             y += GRID_SIZE
 
+    def event(self, event: QEvent) -> bool:
+        if event.type() == QEvent.Type.Gesture:
+            return self._gesture_event(event)
+        return super().event(event)
+
+    def _gesture_event(self, event: QGestureEvent) -> bool:
+        pinch = event.gesture(Qt.GestureType.PinchGesture)
+        if pinch and isinstance(pinch, QPinchGesture):
+            factor = pinch.scaleFactor()
+            new_zoom = self._zoom * factor
+            if MIN_ZOOM <= new_zoom <= MAX_ZOOM:
+                self._zoom = new_zoom
+                self.scale(factor, factor)
+            event.accept(pinch)
+            return True
+        return False
+
     def wheelEvent(self, event: QWheelEvent) -> None:
+        # Ctrl+scroll = zoom; plain scroll = pan (default)
         if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
-            if event.angleDelta().y() > 0:
-                factor = ZOOM_FACTOR
-            else:
-                factor = 1.0 / ZOOM_FACTOR
+            delta = event.angleDelta().y()
+            if delta == 0:
+                event.accept()
+                return
+
+            steps = delta / 120.0
+            factor = 1.0 + steps * 0.05
 
             new_zoom = self._zoom * factor
             if MIN_ZOOM <= new_zoom <= MAX_ZOOM:
                 self._zoom = new_zoom
                 self.scale(factor, factor)
+            event.accept()
         else:
             super().wheelEvent(event)
 

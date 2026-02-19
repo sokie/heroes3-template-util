@@ -11,6 +11,9 @@ from h3tc.writers.base import BaseWriter
 
 
 class SodWriter(BaseWriter):
+    format_id = "sod"
+    format_name = "SOD"
+
     def write(self, pack: TemplatePack, filepath: Path) -> None:
         output = io.StringIO()
         writer = csv.writer(

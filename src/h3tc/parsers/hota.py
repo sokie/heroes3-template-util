@@ -23,6 +23,10 @@ from h3tc.parsers.base import BaseParser
 
 
 class HotaParser(BaseParser):
+    format_id = "hota"
+    format_name = "HOTA 1.7.x"
+    min_columns = HotaCol.TOTAL
+
     def parse(self, filepath: Path) -> TemplatePack:
         raw = filepath.read_bytes()
         try:

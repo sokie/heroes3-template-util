@@ -11,6 +11,9 @@ from h3tc.writers.base import BaseWriter
 
 
 class HotaWriter(BaseWriter):
+    format_id = "hota"
+    format_name = "HOTA 1.7.x"
+
     def write(self, pack: TemplatePack, filepath: Path) -> None:
         output = io.StringIO()
         writer = csv.writer(

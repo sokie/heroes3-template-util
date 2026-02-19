@@ -36,7 +36,8 @@ from h3tc.models import (
     ZoneOptions,
 )
 from h3tc.enums import MONSTER_FACTIONS_SOD, TERRAINS_SOD
-from h3tc.parsers.sod import SodParser
+from h3tc.converters.hota_to_sod import hota_to_sod
+from h3tc.formats import detect_format
 from h3tc.writers.sod import SodWriter
 
 
@@ -50,7 +51,6 @@ class MainWindow(QMainWindow):
         self.resize(1280, 800)
 
         self._state = EditorState()
-        self._parser = SodParser()
         self._writer = SodWriter()
 
         self._build_actions()
@@ -70,7 +70,7 @@ class MainWindow(QMainWindow):
 
         self._act_open = QAction("Open", self)
         self._act_open.setShortcut(QKeySequence.StandardKey.Open)
-        self._act_open.setToolTip("Open SOD template (.txt)")
+        self._act_open.setToolTip("Open template (.txt or .h3t)")
 
         self._act_save = QAction("Save", self)
         self._act_save.setShortcut(QKeySequence.StandardKey.Save)
@@ -221,14 +221,20 @@ class MainWindow(QMainWindow):
     # ── File Operations ──────────────────────────────────────────────────
 
     def open_file(self, filepath: str | Path) -> None:
-        """Open a SOD template file."""
+        """Open a template file. Non-SOD formats are converted to SOD."""
         filepath = Path(filepath)
         if not filepath.exists():
             QMessageBox.warning(self, "Error", f"File not found: {filepath}")
             return
 
         try:
-            pack = self._parser.parse(filepath)
+            parser = detect_format(filepath)
+            pack = parser.parse(filepath)
+            source_format = parser.format_name
+
+            # Convert non-SOD formats to SOD for editing
+            if parser.format_id != "sod":
+                pack = hota_to_sod(pack)
         except Exception as e:
             QMessageBox.critical(self, "Parse Error", f"Failed to parse:\n{e}")
             return
@@ -248,8 +254,9 @@ class MainWindow(QMainWindow):
         # Load first map
         self._load_current_map(layouts)
         self._update_title()
+        fmt = f"{source_format} → SOD" if source_format != "SOD" else "SOD"
         self._statusbar.showMessage(
-            f"Opened: {filepath.name} ({len(pack.maps)} map(s))"
+            f"Opened: {filepath.name} ({len(pack.maps)} map(s), {fmt})"
         )
 
     def _load_current_map(
@@ -303,9 +310,9 @@ class MainWindow(QMainWindow):
 
         path, _ = QFileDialog.getOpenFileName(
             self,
-            "Open SOD Template",
+            "Open Template",
             "",
-            "SOD Templates (*.txt);;All Files (*)",
+            "All Templates (*.txt *.h3t);;SOD Templates (*.txt);;HOTA Templates (*.h3t);;All Files (*)",
         )
         if path:
             self.open_file(path)

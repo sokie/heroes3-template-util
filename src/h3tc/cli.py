@@ -5,23 +5,11 @@ from pathlib import Path
 
 import click
 
-from h3tc.parsers.sod import SodParser
-from h3tc.parsers.hota import HotaParser
-from h3tc.writers.sod import SodWriter
-from h3tc.writers.hota import HotaWriter
 from h3tc.converters.sod_to_hota import sod_to_hota
 from h3tc.converters.hota_to_sod import hota_to_sod
-
-
-def _detect_format(filepath: Path) -> str:
-    """Detect format from file extension."""
-    ext = filepath.suffix.lower()
-    if ext == ".h3t":
-        return "hota"
-    elif ext == ".txt":
-        return "sod"
-    else:
-        return ""
+from h3tc.formats import detect_format, get_parser
+from h3tc.writers.sod import SodWriter
+from h3tc.writers.hota import HotaWriter
 
 
 @click.group()
@@ -53,23 +41,13 @@ def convert(input_file: Path, output_file: Path, from_format: str, to_format: st
     """Convert a template file between SOD and HOTA formats."""
     # Auto-detect input format
     if not from_format:
-        from_format = _detect_format(input_file)
-        if not from_format:
-            click.echo(
-                f"Cannot detect format from extension '{input_file.suffix}'. "
-                "Use --from to specify.",
-                err=True,
-            )
-            sys.exit(1)
-
-    from_format = from_format.lower()
-    to_format = to_format.lower()
-
-    # Parse input
-    if from_format == "sod":
-        parser = SodParser()
+        parser = detect_format(input_file)
+        from_format = parser.format_id
     else:
-        parser = HotaParser()
+        from_format = from_format.lower()
+        parser = get_parser(from_format)
+
+    to_format = to_format.lower()
 
     pack = parser.parse(input_file)
 
