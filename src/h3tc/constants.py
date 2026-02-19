@@ -5,7 +5,13 @@ All indices are 0-based. This is the single source of truth for parsers and writ
 
 
 class SodCol:
-    """SOD format column indices (0-based). 85 active columns, padded to 183."""
+    """SOD format column indices (0-based). 85 active columns.
+
+    Note: The original game editor pads SOD files to 183 columns with trailing
+    empty tabs. Only the first 85 contain data. Our parser ignores the padding,
+    but format detection must account for it — a naive column-count check would
+    misidentify SOD files (183 cols) as HOTA (138/140 cols).
+    """
 
     # Map section (cols 0-2)
     NAME = 0

@@ -8,7 +8,6 @@ from h3tc.parsers.hota import HotaParser
 class Hota18Parser(HotaParser):
     format_id = "hota18"
     format_name = "HOTA 1.8.x"
-    min_columns = Hota18Col.TOTAL
 
     _col = Hota18Col
     _town_factions = TOWN_FACTIONS_HOTA18

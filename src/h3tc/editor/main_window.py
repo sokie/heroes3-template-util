@@ -37,8 +37,13 @@ from h3tc.models import (
 )
 from h3tc.enums import MONSTER_FACTIONS_SOD, TERRAINS_SOD
 from h3tc.converters.hota_to_sod import hota_to_sod
-from h3tc.formats import detect_format
+from h3tc.converters.sod_to_hota import sod_to_hota
+from h3tc.converters.hota_to_hota18 import hota_to_hota18
+from h3tc.converters.hota18_to_hota import hota18_to_hota
+from h3tc.formats import detect_format, get_parser
 from h3tc.writers.sod import SodWriter
+from h3tc.writers.hota import HotaWriter
+from h3tc.writers.hota18 import Hota18Writer
 
 
 class MainWindow(QMainWindow):
@@ -90,6 +95,9 @@ class MainWindow(QMainWindow):
         self._act_delete.setShortcut(QKeySequence.StandardKey.Delete)
         self._act_delete.setToolTip("Delete selected item(s)")
 
+        self._act_convert = QAction("Convert File...", self)
+        self._act_convert.setToolTip("Convert a template file between formats")
+
         self._act_zoom_fit = QAction("Zoom to Fit", self)
         self._act_zoom_fit.setShortcut(QKeySequence("Ctrl+0"))
         self._act_zoom_fit.setToolTip("Zoom to fit all zones")
@@ -128,6 +136,8 @@ class MainWindow(QMainWindow):
         file_menu.addSeparator()
         file_menu.addAction(self._act_save)
         file_menu.addAction(self._act_save_as)
+        file_menu.addSeparator()
+        file_menu.addAction(self._act_convert)
 
         edit_menu = mb.addMenu("&Edit")
         edit_menu.addAction(self._act_add_zone)
@@ -195,6 +205,7 @@ class MainWindow(QMainWindow):
         self._act_open.triggered.connect(self._on_open)
         self._act_save.triggered.connect(self._on_save)
         self._act_save_as.triggered.connect(self._on_save_as)
+        self._act_convert.triggered.connect(self._on_convert)
         self._act_add_zone.triggered.connect(self._on_add_zone)
         self._act_add_connection.triggered.connect(self._on_add_connection)
         self._act_delete.triggered.connect(self._on_delete)
@@ -332,6 +343,48 @@ class MainWindow(QMainWindow):
         )
         if path:
             self._save_to(Path(path))
+
+    def _on_convert(self) -> None:
+        from h3tc.editor.convert_dialog import ConvertDialog
+
+        dialog = ConvertDialog(self)
+        if dialog.exec() != ConvertDialog.DialogCode.Accepted:
+            return
+
+        try:
+            parser = get_parser(dialog.input_format_id)
+            pack = parser.parse(dialog.input_path)
+
+            from_fmt = dialog.input_format_id
+            to_fmt = dialog.output_format_id
+
+            if from_fmt == "sod" and to_fmt == "hota17":
+                pack = sod_to_hota(pack, pack_name=dialog.pack_name or dialog.input_path.stem)
+            elif from_fmt == "sod" and to_fmt == "hota18":
+                pack = sod_to_hota(pack, pack_name=dialog.pack_name or dialog.input_path.stem)
+                pack = hota_to_hota18(pack)
+            elif from_fmt == "hota17" and to_fmt == "sod":
+                pack = hota_to_sod(pack)
+            elif from_fmt == "hota17" and to_fmt == "hota18":
+                pack = hota_to_hota18(pack)
+            elif from_fmt == "hota18" and to_fmt == "sod":
+                pack = hota_to_sod(pack)
+            elif from_fmt == "hota18" and to_fmt == "hota17":
+                pack = hota18_to_hota(pack)
+
+            writers = {"sod": SodWriter, "hota17": HotaWriter, "hota18": Hota18Writer}
+            writers[to_fmt]().write(pack, dialog.output_path)
+
+            self._statusbar.showMessage(
+                f"Converted: {dialog.input_path.name} → {dialog.output_path.name}"
+            )
+            QMessageBox.information(
+                self,
+                "Conversion Complete",
+                f"Successfully converted to {dialog.output_path.name}",
+            )
+        except Exception as e:
+            QMessageBox.critical(self, "Conversion Error", f"Failed to convert:\n{e}")
 
     def _validate_and_fix(self) -> list[str]:
         """Validate all zones and auto-fix missing terrain/monster defaults.

@@ -27,7 +27,6 @@ _SOD_TOWN_CANONICAL = [
 class SodParser(BaseParser):
     format_id = "sod"
     format_name = "SOD"
-    min_columns = SodCol.ACTIVE_COLS
 
     def parse(self, filepath: Path) -> TemplatePack:
         raw = filepath.read_bytes()

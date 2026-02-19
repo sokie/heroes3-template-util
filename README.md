@@ -14,11 +14,13 @@ pip install -e .
 
 ## Supported formats
 
-| Format | ID | Extension | Columns | Description |
-|--------|----|-----------|---------|-------------|
-| SOD | `sod` | `.txt` | 85 (padded to 183) | Shadow of Death — 9 town factions |
+| Format | ID | Extension | Active columns | Description |
+|--------|----|-----------|----------------|-------------|
+| SOD | `sod` | `.txt` | 85 | Shadow of Death — 9 town factions |
 | HOTA 1.7.x | `hota17` | `.h3t` | 138 | Horn of the Abyss — 11 town factions (adds Cove, Factory) |
 | HOTA 1.8.x | `hota18` | `.h3t` | 140 | Horn of the Abyss — 12 town factions (adds Bulwark) |
+
+> **Note:** SOD files from the original game editor are padded to 183 columns with trailing empty tabs, even though only 85 contain data. Format auto-detection inspects the header structure rather than column count to handle this correctly.
 
 ## Usage
 

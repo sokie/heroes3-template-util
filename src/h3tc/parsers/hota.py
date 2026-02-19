@@ -25,7 +25,6 @@ from h3tc.parsers.base import BaseParser
 class HotaParser(BaseParser):
     format_id = "hota17"
     format_name = "HOTA 1.7.x"
-    min_columns = HotaCol.TOTAL
 
     _col = HotaCol
     _town_factions = TOWN_FACTIONS_HOTA
