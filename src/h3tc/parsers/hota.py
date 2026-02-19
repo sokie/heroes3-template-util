@@ -27,7 +27,13 @@ class HotaParser(BaseParser):
     format_name = "HOTA 1.7.x"
     min_columns = HotaCol.TOTAL
 
+    _col = HotaCol
+    _town_factions = TOWN_FACTIONS_HOTA
+    _monster_factions = MONSTER_FACTIONS_HOTA
+    _terrains = TERRAINS_HOTA
+
     def parse(self, filepath: Path) -> TemplatePack:
+        c = self._col
         raw = filepath.read_bytes()
         try:
             text = raw.decode("ascii")
@@ -45,55 +51,55 @@ class HotaParser(BaseParser):
         current_map: TemplateMap | None = None
 
         for row_num, row in enumerate(data_rows):
-            while len(row) < HotaCol.TOTAL + 1:
+            while len(row) < c.TOTAL + 1:
                 row.append("")
 
             # First data row (row 4) has field counts and pack metadata
             if row_num == 0:
                 pack.field_counts = FieldCounts(
-                    town=row[HotaCol.FIELD_COUNT_TOWN],
-                    terrain=row[HotaCol.FIELD_COUNT_TERRAIN],
-                    zone_type=row[HotaCol.FIELD_COUNT_ZONE_TYPE],
-                    pack_new=row[HotaCol.FIELD_COUNT_PACK_NEW],
-                    map_new=row[HotaCol.FIELD_COUNT_MAP_NEW],
-                    zone_new=row[HotaCol.FIELD_COUNT_ZONE_NEW],
-                    connection_new=row[HotaCol.FIELD_COUNT_CONN_NEW],
+                    town=row[c.FIELD_COUNT_TOWN],
+                    terrain=row[c.FIELD_COUNT_TERRAIN],
+                    zone_type=row[c.FIELD_COUNT_ZONE_TYPE],
+                    pack_new=row[c.FIELD_COUNT_PACK_NEW],
+                    map_new=row[c.FIELD_COUNT_MAP_NEW],
+                    zone_new=row[c.FIELD_COUNT_ZONE_NEW],
+                    connection_new=row[c.FIELD_COUNT_CONN_NEW],
                 )
                 pack.metadata = PackMetadata(
-                    name=row[HotaCol.PACK_NAME],
-                    description=row[HotaCol.PACK_DESC],
-                    town_selection=row[HotaCol.PACK_TOWN_SELECTION],
-                    heroes=row[HotaCol.PACK_HEROES],
-                    mirror=row[HotaCol.PACK_MIRROR],
-                    tags=row[HotaCol.PACK_TAGS],
-                    max_battle_rounds=row[HotaCol.PACK_MAX_BATTLE_ROUNDS],
-                    forbid_hiring_heroes=row[HotaCol.PACK_FORBID_HIRING_HEROES],
+                    name=row[c.PACK_NAME],
+                    description=row[c.PACK_DESC],
+                    town_selection=row[c.PACK_TOWN_SELECTION],
+                    heroes=row[c.PACK_HEROES],
+                    mirror=row[c.PACK_MIRROR],
+                    tags=row[c.PACK_TAGS],
+                    max_battle_rounds=row[c.PACK_MAX_BATTLE_ROUNDS],
+                    forbid_hiring_heroes=row[c.PACK_FORBID_HIRING_HEROES],
                 )
 
-            map_name = row[HotaCol.MAP_NAME].strip()
-            zone_id = row[HotaCol.ZONE_ID].strip()
+            map_name = row[c.MAP_NAME].strip()
+            zone_id = row[c.ZONE_ID].strip()
             has_conn = any(
                 row[j].strip()
-                for j in range(HotaCol.CONN_ZONE1, HotaCol.CONN_MAX_TOTAL_POS + 1)
+                for j in range(c.CONN_ZONE1, c.CONN_MAX_TOTAL_POS + 1)
             )
 
             # New map starts when Map Name is non-empty
             if map_name:
                 current_map = TemplateMap(
                     name=map_name,
-                    min_size=row[HotaCol.MAP_MIN_SIZE],
-                    max_size=row[HotaCol.MAP_MAX_SIZE],
+                    min_size=row[c.MAP_MIN_SIZE],
+                    max_size=row[c.MAP_MAX_SIZE],
                     options=MapOptions(
-                        artifacts=row[HotaCol.MAP_ARTIFACTS],
-                        combo_arts=row[HotaCol.MAP_COMBO_ARTS],
-                        spells=row[HotaCol.MAP_SPELLS],
-                        secondary_skills=row[HotaCol.MAP_SECONDARY_SKILLS],
-                        objects=row[HotaCol.MAP_OBJECTS],
-                        rock_blocks=row[HotaCol.MAP_ROCK_BLOCKS],
-                        zone_sparseness=row[HotaCol.MAP_ZONE_SPARSENESS],
-                        special_weeks_disabled=row[HotaCol.MAP_SPECIAL_WEEKS_DISABLED],
-                        spell_research=row[HotaCol.MAP_SPELL_RESEARCH],
-                        anarchy=row[HotaCol.MAP_ANARCHY],
+                        artifacts=row[c.MAP_ARTIFACTS],
+                        combo_arts=row[c.MAP_COMBO_ARTS],
+                        spells=row[c.MAP_SPELLS],
+                        secondary_skills=row[c.MAP_SECONDARY_SKILLS],
+                        objects=row[c.MAP_OBJECTS],
+                        rock_blocks=row[c.MAP_ROCK_BLOCKS],
+                        zone_sparseness=row[c.MAP_ZONE_SPARSENESS],
+                        special_weeks_disabled=row[c.MAP_SPECIAL_WEEKS_DISABLED],
+                        spell_research=row[c.MAP_SPELL_RESEARCH],
+                        anarchy=row[c.MAP_ANARCHY],
                     ),
                 )
                 pack.maps.append(current_map)
@@ -111,7 +117,7 @@ class HotaParser(BaseParser):
             if has_conn:
                 conn = self._parse_connection(row)
                 if not zone_id:
-                    for j in range(HotaCol.ZONE_ID, HotaCol.CONN_ZONE1):
+                    for j in range(c.ZONE_ID, c.CONN_ZONE1):
                         if row[j].strip():
                             conn.extra_zone_cols[j] = row[j]
                 current_map.connections.append(conn)
@@ -119,10 +125,10 @@ class HotaParser(BaseParser):
         return pack
 
     def _parse_zone(self, row: list[str]) -> Zone:
-        c = HotaCol
+        c = self._col
 
         town_types = {}
-        for i, faction in enumerate(TOWN_FACTIONS_HOTA):
+        for i, faction in enumerate(self._town_factions):
             town_types[faction] = row[c.TOWN_TYPES_START + i]
 
         min_mines = {}
@@ -134,11 +140,11 @@ class HotaParser(BaseParser):
             mine_density[resource] = row[c.MINE_DENSITY_START + i]
 
         terrains = {}
-        for i, terrain in enumerate(TERRAINS_HOTA):
+        for i, terrain in enumerate(self._terrains):
             terrains[terrain] = row[c.TERRAINS_START + i]
 
         monster_factions = {}
-        for i, faction in enumerate(MONSTER_FACTIONS_HOTA):
+        for i, faction in enumerate(self._monster_factions):
             monster_factions[faction] = row[c.MONSTER_FACTIONS_START + i]
 
         treasure_tiers = []
@@ -196,7 +202,7 @@ class HotaParser(BaseParser):
         )
 
     def _parse_connection(self, row: list[str]) -> Connection:
-        c = HotaCol
+        c = self._col
         return Connection(
             zone1=row[c.CONN_ZONE1],
             zone2=row[c.CONN_ZONE2],

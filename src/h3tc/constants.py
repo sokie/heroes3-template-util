@@ -250,6 +250,157 @@ class HotaCol:
     TOTAL = 138
 
 
+class Hota18Col:
+    """HOTA 1.8.x format column indices (0-based). 140 columns (adds Bulwark)."""
+
+    # Field counts (cols 0-6) — same as HotaCol
+    FIELD_COUNT_TOWN = 0
+    FIELD_COUNT_TERRAIN = 1
+    FIELD_COUNT_ZONE_TYPE = 2
+    FIELD_COUNT_PACK_NEW = 3
+    FIELD_COUNT_MAP_NEW = 4
+    FIELD_COUNT_ZONE_NEW = 5
+    FIELD_COUNT_CONN_NEW = 6
+
+    # Pack metadata (cols 7-14) — same as HotaCol
+    PACK_NAME = 7
+    PACK_DESC = 8
+    PACK_TOWN_SELECTION = 9
+    PACK_HEROES = 10
+    PACK_MIRROR = 11
+    PACK_TAGS = 12
+    PACK_MAX_BATTLE_ROUNDS = 13
+    PACK_FORBID_HIRING_HEROES = 14
+
+    # Map section (cols 15-27) — same as HotaCol
+    MAP_NAME = 15
+    MAP_MIN_SIZE = 16
+    MAP_MAX_SIZE = 17
+    MAP_ARTIFACTS = 18
+    MAP_COMBO_ARTS = 19
+    MAP_SPELLS = 20
+    MAP_SECONDARY_SKILLS = 21
+    MAP_OBJECTS = 22
+    MAP_ROCK_BLOCKS = 23
+    MAP_ZONE_SPARSENESS = 24
+    MAP_SPECIAL_WEEKS_DISABLED = 25
+    MAP_SPELL_RESEARCH = 26
+    MAP_ANARCHY = 27
+
+    # Zone identification (col 28) — same as HotaCol
+    ZONE_ID = 28
+
+    # Zone type (cols 29-32) — same as HotaCol
+    HUMAN_START = 29
+    COMPUTER_START = 30
+    TREASURE = 31
+    JUNCTION = 32
+
+    # Zone base (col 33) — same as HotaCol
+    BASE_SIZE = 33
+
+    # Position constraints (cols 34-37) — same as HotaCol
+    MIN_HUMAN_POS = 34
+    MAX_HUMAN_POS = 35
+    MIN_TOTAL_POS = 36
+    MAX_TOTAL_POS = 37
+
+    # Ownership (col 38) — same as HotaCol
+    OWNERSHIP = 38
+
+    # Player towns (cols 39-42) — same as HotaCol
+    PLAYER_MIN_TOWNS = 39
+    PLAYER_MIN_CASTLES = 40
+    PLAYER_TOWN_DENSITY = 41
+    PLAYER_CASTLE_DENSITY = 42
+
+    # Neutral towns (cols 43-46) — same as HotaCol
+    NEUTRAL_MIN_TOWNS = 43
+    NEUTRAL_MIN_CASTLES = 44
+    NEUTRAL_TOWN_DENSITY = 45
+    NEUTRAL_CASTLE_DENSITY = 46
+
+    # Towns same type (col 47) — same as HotaCol
+    TOWNS_SAME_TYPE = 47
+
+    # Town types - 12 factions (cols 48-59) — +1 for Bulwark
+    TOWN_TYPES_START = 48
+    TOWN_TYPES_END = 59  # inclusive (Bulwark)
+    TOWN_TYPE_COUNT = 12
+
+    # Minimum mines - 7 resources (cols 60-66) — shifted +1
+    MIN_MINES_START = 60
+    MIN_MINES_END = 66  # inclusive
+
+    # Mine density - 7 resources (cols 67-73) — shifted +1
+    MINE_DENSITY_START = 67
+    MINE_DENSITY_END = 73  # inclusive
+
+    # Terrain match (col 74) — shifted +1
+    TERRAIN_MATCH = 74
+
+    # Terrain types - 10 types (cols 75-84) — shifted +1
+    TERRAINS_START = 75
+    TERRAINS_END = 84  # inclusive (Wasteland)
+    TERRAIN_COUNT = 10
+
+    # Monster strength (col 85) — shifted +1
+    MONSTER_STRENGTH = 85
+
+    # Monster match (col 86) — shifted +1
+    MONSTER_MATCH = 86
+
+    # Monster factions - 13 factions (cols 87-99) — shifted +1, +1 for Bulwark
+    MONSTER_FACTIONS_START = 87
+    MONSTER_FACTIONS_END = 99  # inclusive (Bulwark)
+    MONSTER_FACTION_COUNT = 13
+
+    # Treasure - 3 tiers x 3 fields (cols 100-108) — shifted +2
+    TREASURE_START = 100
+    TREASURE_END = 108  # inclusive
+
+    # Zone options (cols 109-126) — shifted +2
+    ZONE_OPT_PLACEMENT = 109
+    ZONE_OPT_OBJECTS = 110
+    ZONE_OPT_MIN_OBJECTS = 111
+    ZONE_OPT_IMAGE_SETTINGS = 112
+    ZONE_OPT_FORCE_NEUTRAL = 113
+    ZONE_OPT_ALLOW_NON_COHERENT_ROAD = 114
+    ZONE_OPT_ZONE_REPULSION = 115
+    ZONE_OPT_TOWN_HINT = 116
+    ZONE_OPT_MONSTERS_DISP_STANDARD = 117
+    ZONE_OPT_MONSTERS_DISP_CUSTOM = 118
+    ZONE_OPT_MONSTERS_JOINING_PCT = 119
+    ZONE_OPT_MONSTERS_JOIN_MONEY = 120
+    ZONE_OPT_MIN_AIRSHIP_SHIPYARDS = 121
+    ZONE_OPT_AIRSHIP_SHIPYARD_DENSITY = 122
+    ZONE_OPT_TERRAIN_HINT = 123
+    ZONE_OPT_ALLOWED_FACTIONS = 124
+    ZONE_OPT_FACTION_HINT = 125
+    ZONE_OPT_MAX_BLOCK_VALUE = 126
+
+    ZONE_OPTIONS_START = 109
+    ZONE_OPTIONS_END = 126  # inclusive
+    ZONE_OPTIONS_COUNT = 18
+
+    # Connections (cols 127-139) — shifted +2
+    CONN_ZONE1 = 127
+    CONN_ZONE2 = 128
+    CONN_VALUE = 129
+    CONN_WIDE = 130
+    CONN_BORDER_GUARD = 131
+    CONN_ROAD = 132
+    CONN_TYPE = 133
+    CONN_FICTIVE = 134
+    CONN_PORTAL_REPULSION = 135
+    CONN_MIN_HUMAN_POS = 136
+    CONN_MAX_HUMAN_POS = 137
+    CONN_MIN_TOTAL_POS = 138
+    CONN_MAX_TOTAL_POS = 139
+
+    TOTAL = 140
+
+
 # Zone option field names in order (for models)
 ZONE_OPTION_FIELDS = [
     "placement",
@@ -318,4 +469,11 @@ SOD_TO_HOTA_DEFAULTS = {
         "fictive": "",
         "portal_repulsion": "",
     },
+}
+
+# Default conversion values for SOD -> HOTA 1.8.x
+SOD_TO_HOTA18_DEFAULTS = {
+    "field_counts": ["12", "10", "4", "8", "10", "18", "4"],
+    "zone_options": SOD_TO_HOTA_DEFAULTS["zone_options"],
+    "connection": SOD_TO_HOTA_DEFAULTS["connection"],
 }

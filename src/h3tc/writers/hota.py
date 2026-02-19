@@ -14,6 +14,11 @@ class HotaWriter(BaseWriter):
     format_id = "hota"
     format_name = "HOTA 1.7.x"
 
+    _col = HotaCol
+    _town_factions = TOWN_FACTIONS_HOTA
+    _monster_factions = MONSTER_FACTIONS_HOTA
+    _terrains = TERRAINS_HOTA
+
     def write(self, pack: TemplatePack, filepath: Path) -> None:
         output = io.StringIO()
         writer = csv.writer(
@@ -47,61 +52,62 @@ class HotaWriter(BaseWriter):
         tmap: TemplateMap,
         first_data_row: bool,
     ) -> None:
+        c = self._col
         zones = tmap.zones
         conns = tmap.connections
         max_rows = max(len(zones), len(conns), 1)  # At least 1 row for map name
 
         for i in range(max_rows):
-            row = [""] * (HotaCol.TOTAL + 1)
+            row = [""] * (c.TOTAL + 1)
 
             # First data row of first map: field counts + pack metadata
             if first_data_row and i == 0 and pack.field_counts and pack.metadata:
                 fc = pack.field_counts
-                row[HotaCol.FIELD_COUNT_TOWN] = fc.town
-                row[HotaCol.FIELD_COUNT_TERRAIN] = fc.terrain
-                row[HotaCol.FIELD_COUNT_ZONE_TYPE] = fc.zone_type
-                row[HotaCol.FIELD_COUNT_PACK_NEW] = fc.pack_new
-                row[HotaCol.FIELD_COUNT_MAP_NEW] = fc.map_new
-                row[HotaCol.FIELD_COUNT_ZONE_NEW] = fc.zone_new
-                row[HotaCol.FIELD_COUNT_CONN_NEW] = fc.connection_new
+                row[c.FIELD_COUNT_TOWN] = fc.town
+                row[c.FIELD_COUNT_TERRAIN] = fc.terrain
+                row[c.FIELD_COUNT_ZONE_TYPE] = fc.zone_type
+                row[c.FIELD_COUNT_PACK_NEW] = fc.pack_new
+                row[c.FIELD_COUNT_MAP_NEW] = fc.map_new
+                row[c.FIELD_COUNT_ZONE_NEW] = fc.zone_new
+                row[c.FIELD_COUNT_CONN_NEW] = fc.connection_new
 
                 pm = pack.metadata
-                row[HotaCol.PACK_NAME] = pm.name
-                row[HotaCol.PACK_DESC] = pm.description
-                row[HotaCol.PACK_TOWN_SELECTION] = pm.town_selection
-                row[HotaCol.PACK_HEROES] = pm.heroes
-                row[HotaCol.PACK_MIRROR] = pm.mirror
-                row[HotaCol.PACK_TAGS] = pm.tags
-                row[HotaCol.PACK_MAX_BATTLE_ROUNDS] = pm.max_battle_rounds
-                row[HotaCol.PACK_FORBID_HIRING_HEROES] = pm.forbid_hiring_heroes
+                row[c.PACK_NAME] = pm.name
+                row[c.PACK_DESC] = pm.description
+                row[c.PACK_TOWN_SELECTION] = pm.town_selection
+                row[c.PACK_HEROES] = pm.heroes
+                row[c.PACK_MIRROR] = pm.mirror
+                row[c.PACK_TAGS] = pm.tags
+                row[c.PACK_MAX_BATTLE_ROUNDS] = pm.max_battle_rounds
+                row[c.PACK_FORBID_HIRING_HEROES] = pm.forbid_hiring_heroes
 
             # Map name on first row of each map
             if i == 0:
-                row[HotaCol.MAP_NAME] = tmap.name
-                row[HotaCol.MAP_MIN_SIZE] = tmap.min_size
-                row[HotaCol.MAP_MAX_SIZE] = tmap.max_size
+                row[c.MAP_NAME] = tmap.name
+                row[c.MAP_MIN_SIZE] = tmap.min_size
+                row[c.MAP_MAX_SIZE] = tmap.max_size
 
                 opts = tmap.options
                 if opts.artifacts is not None:
-                    row[HotaCol.MAP_ARTIFACTS] = opts.artifacts
+                    row[c.MAP_ARTIFACTS] = opts.artifacts
                 if opts.combo_arts is not None:
-                    row[HotaCol.MAP_COMBO_ARTS] = opts.combo_arts
+                    row[c.MAP_COMBO_ARTS] = opts.combo_arts
                 if opts.spells is not None:
-                    row[HotaCol.MAP_SPELLS] = opts.spells
+                    row[c.MAP_SPELLS] = opts.spells
                 if opts.secondary_skills is not None:
-                    row[HotaCol.MAP_SECONDARY_SKILLS] = opts.secondary_skills
+                    row[c.MAP_SECONDARY_SKILLS] = opts.secondary_skills
                 if opts.objects is not None:
-                    row[HotaCol.MAP_OBJECTS] = opts.objects
+                    row[c.MAP_OBJECTS] = opts.objects
                 if opts.rock_blocks is not None:
-                    row[HotaCol.MAP_ROCK_BLOCKS] = opts.rock_blocks
+                    row[c.MAP_ROCK_BLOCKS] = opts.rock_blocks
                 if opts.zone_sparseness is not None:
-                    row[HotaCol.MAP_ZONE_SPARSENESS] = opts.zone_sparseness
+                    row[c.MAP_ZONE_SPARSENESS] = opts.zone_sparseness
                 if opts.special_weeks_disabled is not None:
-                    row[HotaCol.MAP_SPECIAL_WEEKS_DISABLED] = opts.special_weeks_disabled
+                    row[c.MAP_SPECIAL_WEEKS_DISABLED] = opts.special_weeks_disabled
                 if opts.spell_research is not None:
-                    row[HotaCol.MAP_SPELL_RESEARCH] = opts.spell_research
+                    row[c.MAP_SPELL_RESEARCH] = opts.spell_research
                 if opts.anarchy is not None:
-                    row[HotaCol.MAP_ANARCHY] = opts.anarchy
+                    row[c.MAP_ANARCHY] = opts.anarchy
 
             if i < len(zones):
                 self._fill_zone(row, zones[i])
@@ -112,7 +118,7 @@ class HotaWriter(BaseWriter):
             writer.writerow(row)
 
     def _fill_zone(self, row: list[str], zone: Zone) -> None:
-        c = HotaCol
+        c = self._col
         row[c.ZONE_ID] = zone.id
         row[c.HUMAN_START] = zone.human_start
         row[c.COMPUTER_START] = zone.computer_start
@@ -139,7 +145,7 @@ class HotaWriter(BaseWriter):
 
         row[c.TOWNS_SAME_TYPE] = zone.towns_same_type
 
-        for i, faction in enumerate(TOWN_FACTIONS_HOTA):
+        for i, faction in enumerate(self._town_factions):
             row[c.TOWN_TYPES_START + i] = zone.town_types.get(faction, "")
 
         for i, resource in enumerate(RESOURCES):
@@ -150,13 +156,13 @@ class HotaWriter(BaseWriter):
 
         row[c.TERRAIN_MATCH] = zone.terrain_match
 
-        for i, terrain in enumerate(TERRAINS_HOTA):
+        for i, terrain in enumerate(self._terrains):
             row[c.TERRAINS_START + i] = zone.terrains.get(terrain, "")
 
         row[c.MONSTER_STRENGTH] = zone.monster_strength
         row[c.MONSTER_MATCH] = zone.monster_match
 
-        for i, faction in enumerate(MONSTER_FACTIONS_HOTA):
+        for i, faction in enumerate(self._monster_factions):
             row[c.MONSTER_FACTIONS_START + i] = zone.monster_factions.get(faction, "")
 
         for tier_idx, tier in enumerate(zone.treasure_tiers):
@@ -173,7 +179,7 @@ class HotaWriter(BaseWriter):
                 row[c.ZONE_OPTIONS_START + i] = val
 
     def _fill_connection(self, row: list[str], conn: Connection) -> None:
-        c = HotaCol
+        c = self._col
         for col_idx, val in conn.extra_zone_cols.items():
             if col_idx < len(row):
                 row[col_idx] = val

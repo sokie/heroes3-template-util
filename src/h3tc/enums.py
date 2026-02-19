@@ -12,6 +12,11 @@ TOWN_FACTIONS_HOTA = [
     "Dungeon", "Stronghold", "Fortress", "Conflux", "Cove", "Factory",
 ]
 
+TOWN_FACTIONS_HOTA18 = [
+    "Castle", "Rampart", "Tower", "Inferno", "Necropolis",
+    "Dungeon", "Stronghold", "Fortress", "Conflux", "Cove", "Factory", "Bulwark",
+]
+
 # Monster factions in canonical order (Neutral first, then town factions)
 # SOD has Neutral + 9 town factions + Forge (11 total)
 # HOTA has Neutral + 11 town factions (Conflux, Cove, Factory added; no Forge) = 12 total
@@ -23,6 +28,11 @@ MONSTER_FACTIONS_SOD = [
 MONSTER_FACTIONS_HOTA = [
     "Neutral", "Castle", "Rampart", "Tower", "Inferno", "Necropolis",
     "Dungeon", "Stronghold", "Fortress", "Conflux", "Cove", "Factory",
+]
+
+MONSTER_FACTIONS_HOTA18 = [
+    "Neutral", "Castle", "Rampart", "Tower", "Inferno", "Necropolis",
+    "Dungeon", "Stronghold", "Fortress", "Conflux", "Cove", "Factory", "Bulwark",
 ]
 
 # Terrain types

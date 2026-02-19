@@ -7,14 +7,17 @@ import click
 
 from h3tc.converters.sod_to_hota import sod_to_hota
 from h3tc.converters.hota_to_sod import hota_to_sod
+from h3tc.converters.hota_to_hota18 import hota_to_hota18
+from h3tc.converters.hota18_to_hota import hota18_to_hota
 from h3tc.formats import detect_format, get_parser
 from h3tc.writers.sod import SodWriter
 from h3tc.writers.hota import HotaWriter
+from h3tc.writers.hota18 import Hota18Writer
 
 
 @click.group()
 def cli():
-    """H3 Template Converter - Convert between SOD and HOTA template formats."""
+    """H3 Template Converter - Convert between SOD, HOTA 1.7.x, and HOTA 1.8.x template formats."""
     pass
 
 
@@ -23,12 +26,12 @@ def cli():
 @click.argument("output_file", type=click.Path(path_type=Path))
 @click.option(
     "--from", "from_format",
-    type=click.Choice(["sod", "hota"], case_sensitive=False),
+    type=click.Choice(["sod", "hota", "hota18"], case_sensitive=False),
     help="Input format (auto-detected from extension if omitted).",
 )
 @click.option(
     "--to", "to_format",
-    type=click.Choice(["sod", "hota"], case_sensitive=False),
+    type=click.Choice(["sod", "hota", "hota18"], case_sensitive=False),
     required=True,
     help="Output format.",
 )
@@ -56,14 +59,26 @@ def convert(input_file: Path, output_file: Path, from_format: str, to_format: st
         if from_format == "sod" and to_format == "hota":
             name = pack_name or input_file.stem
             pack = sod_to_hota(pack, pack_name=name)
+        elif from_format == "sod" and to_format == "hota18":
+            name = pack_name or input_file.stem
+            pack = sod_to_hota(pack, pack_name=name)
+            pack = hota_to_hota18(pack)
         elif from_format == "hota" and to_format == "sod":
             pack = hota_to_sod(pack)
+        elif from_format == "hota" and to_format == "hota18":
+            pack = hota_to_hota18(pack)
+        elif from_format == "hota18" and to_format == "sod":
+            pack = hota_to_sod(pack)
+        elif from_format == "hota18" and to_format == "hota":
+            pack = hota18_to_hota(pack)
     else:
         click.echo(f"Rewriting {from_format.upper()} -> {to_format.upper()}")
 
     # Write output
     if to_format == "sod":
         writer = SodWriter()
+    elif to_format == "hota18":
+        writer = Hota18Writer()
     else:
         writer = HotaWriter()
 

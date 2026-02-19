@@ -8,12 +8,13 @@ from pathlib import Path
 
 from h3tc.parsers.base import BaseParser
 from h3tc.parsers.hota import HotaParser
+from h3tc.parsers.hota18 import Hota18Parser
 from h3tc.parsers.sod import SodParser
 
 # Registered parsers, ordered by min_columns descending so detection
 # checks the most specific (widest) format first.
 PARSERS: list[BaseParser] = sorted(
-    [SodParser(), HotaParser()],
+    [SodParser(), HotaParser(), Hota18Parser()],
     key=lambda p: p.min_columns,
     reverse=True,
 )
