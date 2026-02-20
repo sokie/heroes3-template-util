@@ -50,7 +50,7 @@ _MONSTER_STRENGTHS = [
 def _make_spinbox(minimum: int = 0, maximum: int = 99999) -> QSpinBox:
     spin = QSpinBox()
     spin.setRange(minimum, maximum)
-    spin.setFixedWidth(70)
+    spin.setFixedWidth(80)
     return spin
 
 
@@ -72,7 +72,7 @@ class ZonePanel(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         self._title = QLabel("Zone Settings")
-        self._title.setStyleSheet("font-weight: bold; font-size: 13px; padding: 4px;")
+        self._title.setStyleSheet("font-weight: bold; font-size: 14px; color: #2c2c2c; padding: 6px 4px;")
         layout.addWidget(self._title)
 
         self._tabs = QTabWidget()

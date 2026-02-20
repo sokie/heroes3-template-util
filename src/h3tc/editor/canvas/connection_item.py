@@ -1,7 +1,7 @@
 """Visual representation of a connection between zones."""
 
 from PySide6.QtCore import QLineF, QPointF, QRectF, Qt
-from PySide6.QtGui import QColor, QFont, QPainter, QPen
+from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import (
     QGraphicsItem,
     QGraphicsPathItem,
@@ -141,12 +141,13 @@ class ConnectionItem(QGraphicsPathItem):
         label = self._label
         if label:
             # Measure label to create gap in line
-            font = QFont("Helvetica", 11, QFont.Weight.Bold)
+            font = QFont("Helvetica Neue", CONNECTION_LABEL_FONT_SIZE, QFont.Weight.Bold)
+            font.setStyleHint(QFont.StyleHint.SansSerif)
             painter.setFont(font)
             fm = painter.fontMetrics()
             text_rect = fm.boundingRect(label)
-            label_w = text_rect.width() + 12
-            label_h = text_rect.height() + 4
+            label_w = text_rect.width() + 14
+            label_h = text_rect.height() + 6
 
             # Find the point along the line at half distance, then offset
             line = QLineF(self._p1, self._p2)
@@ -175,13 +176,18 @@ class ConnectionItem(QGraphicsPathItem):
                 painter.setPen(pen)
                 painter.drawLine(self._p1, self._p2)
 
-            # Draw red label at midpoint
+            # Draw label at midpoint with white pill background
             bg_rect = QRectF(
                 self._midpoint.x() - label_w / 2,
                 self._midpoint.y() - label_h / 2,
                 label_w,
                 label_h,
             )
+            # White translucent rounded-rect pill
+            painter.setPen(QPen(color, 1))
+            painter.setBrush(QBrush(QColor(255, 255, 255, 220)))
+            painter.drawRoundedRect(bg_rect, label_h / 2, label_h / 2)
+            # Red label text
             painter.setPen(QPen(QColor(200, 40, 40)))
             painter.drawText(bg_rect, Qt.AlignmentFlag.AlignCenter, label)
         else:
@@ -191,11 +197,11 @@ class ConnectionItem(QGraphicsPathItem):
 
         # Wide indicator
         if self._is_wide:
-            pen = QPen(color, 1, Qt.PenStyle.DashLine)
+            pen = QPen(color, 1.5, Qt.PenStyle.DashLine)
             painter.setPen(pen)
             line = QLineF(self._p1, self._p2)
             normal = line.normalVector()
-            normal.setLength(3)
+            normal.setLength(5)
             offset = QPointF(normal.dx(), normal.dy())
             painter.drawLine(
                 QLineF(self._p1 + offset, self._p2 + offset)

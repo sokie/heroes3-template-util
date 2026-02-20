@@ -5,6 +5,7 @@ from PySide6.QtGui import QColor, QPainter, QPen, QWheelEvent, QMouseEvent
 from PySide6.QtWidgets import QGestureEvent, QGraphicsView, QPinchGesture
 
 from h3tc.editor.constants import (
+    CANVAS_BG_COLOR,
     GRID_COLOR,
     GRID_MAJOR_COLOR,
     GRID_MAJOR_EVERY,
@@ -32,7 +33,7 @@ class TemplateView(QGraphicsView):
         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
         self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorViewCenter)
         self.setViewportUpdateMode(QGraphicsView.ViewportUpdateMode.FullViewportUpdate)
-        self.setBackgroundBrush(QColor(245, 245, 245))
+        self.setBackgroundBrush(CANVAS_BG_COLOR)
         self.setMinimumSize(400, 300)
 
         # Enable pinch gesture recognition
@@ -45,7 +46,7 @@ class TemplateView(QGraphicsView):
         top = int(rect.top()) - (int(rect.top()) % GRID_SIZE)
 
         # Minor grid lines
-        painter.setPen(QPen(GRID_COLOR, 0.5))
+        painter.setPen(QPen(GRID_COLOR, 0.7))
         x = left
         while x <= rect.right():
             if (x // GRID_SIZE) % GRID_MAJOR_EVERY != 0:
@@ -59,7 +60,7 @@ class TemplateView(QGraphicsView):
             y += GRID_SIZE
 
         # Major grid lines
-        painter.setPen(QPen(GRID_MAJOR_COLOR, 0.8))
+        painter.setPen(QPen(GRID_MAJOR_COLOR, 1.0))
         x = left
         while x <= rect.right():
             if (x // GRID_SIZE) % GRID_MAJOR_EVERY == 0:

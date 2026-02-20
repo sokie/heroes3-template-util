@@ -20,7 +20,7 @@ _BLACK = QColor(30, 30, 30)
 
 def _pen(s: float) -> QPen:
     """Outline pen scaled to icon size."""
-    return QPen(_BLACK, max(s * 0.07, 0.8), Qt.PenStyle.SolidLine,
+    return QPen(_BLACK, max(s * 0.08, 1.0), Qt.PenStyle.SolidLine,
                 Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
 
 
@@ -63,7 +63,7 @@ def draw_treasure_chest(painter: QPainter, x: float, y: float, size: float) -> N
     for gx, gy, gc in gems:
         painter.setBrush(QBrush(gc))
         painter.setPen(QPen(_BLACK, s * 0.04))
-        painter.drawEllipse(QPointF(gx, gy), s * 0.055, s * 0.055)
+        painter.drawEllipse(QPointF(gx, gy), s * 0.07, s * 0.07)
 
     painter.restore()
 
@@ -184,7 +184,7 @@ def _draw_one_sword(painter: QPainter, cx: float, cy: float, s: float,
         outline_c = _BLACK
     else:
         lw = max(s * 0.04, 0.4)
-        outline_c = QColor(180, 180, 180, 80)
+        outline_c = QColor(180, 180, 180, 120)
 
     if colored:
         blade_c = QColor(180, 195, 210)
@@ -192,10 +192,10 @@ def _draw_one_sword(painter: QPainter, cx: float, cy: float, s: float,
         handle_c = QColor(120, 80, 30)
         pommel_c = QColor(190, 170, 50)
     else:
-        blade_c = QColor(220, 220, 220, 80)
-        guard_c = QColor(210, 210, 205, 80)
-        handle_c = QColor(205, 205, 200, 80)
-        pommel_c = QColor(215, 215, 210, 80)
+        blade_c = QColor(220, 220, 220, 120)
+        guard_c = QColor(210, 210, 205, 120)
+        handle_c = QColor(205, 205, 200, 120)
+        pommel_c = QColor(215, 215, 210, 120)
 
     bw = s * 0.14  # blade width
     bl = s * 0.50  # blade length
@@ -481,10 +481,17 @@ def draw_value_label(
 ) -> None:
     """Draw a plain value label. White on dark bg, black on light bg."""
     painter.save()
-    font = QFont("Helvetica", font_size, QFont.Weight.Bold)
+    font = QFont("Helvetica Neue", font_size, QFont.Weight.Bold)
+    font.setStyleHint(QFont.StyleHint.SansSerif)
     painter.setFont(font)
     r = QRectF(x, y, width, height)
-    fg = QColor(255, 255, 255) if dark_bg else QColor(30, 30, 30)
-    painter.setPen(QPen(fg))
-    painter.drawText(r, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, text)
+    align = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+    if dark_bg:
+        # 1px dark text shadow for readability on dark backgrounds
+        painter.setPen(QPen(QColor(0, 0, 0, 100)))
+        painter.drawText(r.adjusted(1, 1, 1, 1), align, text)
+        painter.setPen(QPen(QColor(255, 255, 255)))
+    else:
+        painter.setPen(QPen(QColor(30, 30, 30)))
+    painter.drawText(r, align, text)
     painter.restore()

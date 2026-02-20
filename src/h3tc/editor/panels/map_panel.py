@@ -58,7 +58,7 @@ class MapPanel(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         title = QLabel("Map Settings")
-        title.setStyleSheet("font-weight: bold; font-size: 13px; padding: 4px;")
+        title.setStyleSheet("font-weight: bold; font-size: 14px; color: #2c2c2c; padding: 6px 4px;")
         layout.addWidget(title)
 
         grp = QGroupBox("Map")

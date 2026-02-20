@@ -10,6 +10,7 @@ import math
 from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import (
+    QGraphicsDropShadowEffect,
     QGraphicsItem,
     QGraphicsRectItem,
     QStyleOptionGraphicsItem,
@@ -28,6 +29,7 @@ from h3tc.editor.canvas.icons import (
 from h3tc.editor.constants import (
     SELECTION_COLOR,
     ZONE_BORDER_WIDTH,
+    ZONE_COLORS,
     ZONE_CORNER_RADIUS,
     ZONE_SELECTED_BORDER_WIDTH,
     ZONE_SIZE_SCALE,
@@ -35,48 +37,38 @@ from h3tc.editor.constants import (
 from h3tc.enums import RESOURCES
 from h3tc.models import Zone
 
-# Icon layout constants
-_ICO = 24           # Icon size in pixels
-_GAP = 4            # Gap between icon cells
-_CELL_W = _ICO + 30 # Cell width: icon + label space
-_MARGIN = 10        # Margin inside zone rect
-_HEADER_H = _ICO + 10 # Height for header row (chest+treasure, swords)
-_ROW_H = _ICO + 10  # Height per content row
+# Icon layout constants – sized to match HOTA editor
+_ICO = 52           # Icon size in pixels
+_CELL_W = _ICO + 14 # Cell width: icon + padding (count goes below, not beside)
+_MARGIN = 16        # Margin inside zone rect
+_HEADER_H = _ICO + 20 # Height for header row (chest+treasure, swords)
+_ROW_H = _ICO + 28  # Height per content row (icon + count text below)
 _COLS = 3           # Icons per row
 
-# Player colors (matching H3)
-_PLAYER_COLORS = {
-    "1": QColor(210, 65, 65),     # Red
-    "2": QColor(55, 110, 220),    # Blue
-    "3": QColor(200, 170, 110),   # Tan
-    "4": QColor(90, 170, 80),     # Green
-    "5": QColor(220, 150, 40),    # Orange
-    "6": QColor(160, 90, 200),    # Purple
-    "7": QColor(50, 180, 180),    # Teal
-    "8": QColor(200, 130, 170),   # Pink
-}
+# Font sizes (scene-coordinate points)
+_FONT_TREASURE = 34  # Treasure value next to chest
+_FONT_ZONE_ID = 28   # Zone ID in bottom-right corner
+_FONT_LABEL = 22     # P: / N: row labels
+_FONT_COUNT = 22     # Count values below icons
 
 
 def _zone_color(zone: Zone) -> QColor:
     """Zone color based on type and treasure value.
 
-    Player start = player color.
-    Non-player zones colored by treasure value:
-      0-99   = gray
-      100-199 = silver
-      200+   = gold
+    Player start = player color from constants.
+    Non-player zones colored by treasure value.
     """
     if zone.human_start == "x" or zone.computer_start == "x":
         owner = zone.ownership.strip()
-        return _PLAYER_COLORS.get(owner, QColor(100, 149, 237))
+        colors = ZONE_COLORS["human_start"]
+        return colors.get(owner, colors["0"])
 
-    # All non-player zones: color by treasure value
     tval = _treasure_value(zone)
     if tval >= 200:
-        return QColor(200, 170, 100)   # Gold
+        return QColor(215, 195, 140)    # Pastel gold
     if tval >= 100:
-        return QColor(185, 190, 200)   # Silver
-    return QColor(225, 225, 225)       # Light gray
+        return QColor(190, 195, 205)    # Pastel silver
+    return QColor(218, 218, 218)        # Light gray
 
 
 def _int_val(s: str) -> int:
@@ -122,13 +114,6 @@ def _monster_strength(zone: Zone) -> int:
     return _int_val(zone.monster_strength)
 
 
-def _has_treasure(zone: Zone) -> bool:
-    for tier in zone.treasure_tiers:
-        if _int_val(tier.low) > 0 or _int_val(tier.high) > 0:
-            return True
-    return False
-
-
 def _treasure_value(zone: Zone) -> int:
     """Calculate treasure value: sum of (low+high)/2 * density / 1000."""
     total = 0
@@ -165,32 +150,59 @@ def _zone_size(zone: Zone) -> tuple[float, float]:
     rows = _content_rows(zone)
     scale = math.sqrt(max(base, 1)) * ZONE_SIZE_SCALE
 
-    # Width: fit COLS icon cells, with minimum from base_size scale
-    content_w = _COLS * _CELL_W + _MARGIN * 2
-    w = max(content_w, scale * 3, 100)
+    # Width: header needs chest + treasure text + gap + swords
+    header_w = _ICO + 8 + 80 + 20 + _ICO * 2.1  # chest + val + gap + swords
+    # Content needs COLS icon cells + label prefix
+    content_w = 38 + _COLS * _CELL_W + _MARGIN * 2
+    w = max(header_w + _MARGIN * 2, content_w, scale * 3, 160)
 
     # Height: header + content rows + ID line + margins
-    content_h = _HEADER_H + rows * _ROW_H + _MARGIN * 2 + 20
-    h = max(content_h, scale * 2, 70)
+    content_h = _HEADER_H + rows * _ROW_H + _MARGIN * 2 + 40
+    h = max(content_h, scale * 2, 110)
 
     return w, h
 
 
 def _is_dark_bg(color: QColor) -> bool:
-    """Return True if background is dark enough to need white text."""
     brightness = color.red() * 0.299 + color.green() * 0.587 + color.blue() * 0.114
     return brightness < 150
+
+
+def _make_font(size: int, bold: bool = True, extra_bold: bool = False) -> QFont:
+    if extra_bold:
+        weight = QFont.Weight.ExtraBold
+    elif bold:
+        weight = QFont.Weight.Bold
+    else:
+        weight = QFont.Weight.Normal
+    f = QFont("Helvetica Neue", size, weight)
+    f.setStyleHint(QFont.StyleHint.SansSerif)
+    return f
 
 
 def _draw_text(
     painter: QPainter, font: QFont, rect: QRectF, flags: int, text: str,
     dark_bg: bool = True,
 ) -> None:
-    """Draw plain text. White on dark bg, black on light bg."""
     painter.setFont(font)
     fg = QColor(255, 255, 255) if dark_bg else QColor(30, 30, 30)
     painter.setPen(QPen(fg))
     painter.drawText(rect, flags, text)
+
+
+def _draw_icon_with_count(
+    painter: QPainter, draw_fn, ix: float, iy: float,
+    icon_size: float, count: str, dark_bg: bool,
+) -> None:
+    """Draw an icon with its count centered below it."""
+    draw_fn(painter, ix, iy, icon_size)
+    # Count text centered below icon (extra bold for readability)
+    count_rect = QRectF(ix - 4, iy + icon_size + 2, icon_size + 8, 26)
+    _draw_text(
+        painter, _make_font(_FONT_COUNT, extra_bold=True), count_rect,
+        Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop,
+        count, dark_bg,
+    )
 
 
 class ZoneItem(QGraphicsRectItem):
@@ -209,6 +221,13 @@ class ZoneItem(QGraphicsRectItem):
         )
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setZValue(1)
+
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(14)
+        shadow.setOffset(3, 4)
+        shadow.setColor(QColor(0, 0, 0, 55))
+        self.setGraphicsEffect(shadow)
+
         self._update_appearance()
 
     def refresh(self) -> None:
@@ -235,12 +254,10 @@ class ZoneItem(QGraphicsRectItem):
         # ── Background ───────────────────────────────────────
         is_junction = zone.junction.strip().lower() == "x"
         if is_junction:
-            # Thick gray rim (~25% of surface) for junction zones
-            rim_w = min(rect.width(), rect.height()) * 0.14
+            rim_w = min(rect.width(), rect.height()) * 0.16
             painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(QBrush(QColor(140, 140, 140)))
+            painter.setBrush(QBrush(QColor(120, 120, 120)))
             painter.drawRoundedRect(rect, ZONE_CORNER_RADIUS, ZONE_CORNER_RADIUS)
-            # Inner fill
             inner = rect.adjusted(rim_w, rim_w, -rim_w, -rim_w)
             inner_r = max(ZONE_CORNER_RADIUS - rim_w * 0.5, 1)
             painter.setBrush(QBrush(self._color))
@@ -264,51 +281,46 @@ class ZoneItem(QGraphicsRectItem):
         strength = _monster_strength(zone)
         hx = ox
 
-        # Chest icon + treasure value at top-left
         if tval > 0:
             draw_treasure_chest(painter, hx, oy, _ICO)
-            hx += _ICO + 4
-            draw_value_label(painter, hx, oy, 40, _ICO, str(tval), 14,
-                             dark_bg)
-            hx += 44
+            hx += _ICO + 8
+            draw_value_label(painter, hx, oy, 80, _ICO, str(tval),
+                             _FONT_TREASURE, dark_bg)
+            hx += 84
 
-        # Swords at top-right (always 3: colored for active, gray for inactive)
         if strength > 0:
-            sw = _ICO + 2 * _ICO * 0.55  # 3 swords with spacing
+            sw = _ICO + 2 * _ICO * 0.55
             sx = rect.x() + rect.width() - _MARGIN - sw
             draw_swords(painter, sx, oy, _ICO, strength)
 
-        # Zone ID (bottom-right corner) with PC icon for computer start
-        id_y = rect.y() + rect.height() - 20
+        # ── Zone ID (bottom-right) ───────────────────────────
+        id_h = 34
+        id_y = rect.y() + rect.height() - _MARGIN - id_h
         is_computer = zone.computer_start.strip().lower() == "x"
         if is_computer:
-            # Draw PC icon to the left of the zone ID
-            pc_size = 16
+            pc_size = 24
             id_text = zone.id.strip()
-            # Approximate text width for positioning
-            fm_width = max(len(id_text) * 8, 12)
-            pc_x = rect.x() + rect.width() - _MARGIN - fm_width - pc_size - 4
-            pc_y = id_y + 1
+            fm_width = max(len(id_text) * 16, 20)
+            pc_x = rect.x() + rect.width() - _MARGIN - fm_width - pc_size - 6
+            pc_y = id_y + (id_h - pc_size) / 2
             draw_computer_icon(painter, pc_x, pc_y, pc_size)
         _draw_text(
-            painter, QFont("Helvetica", 10, QFont.Weight.Bold),
-            QRectF(ox, id_y,
-                   rect.width() - _MARGIN * 2, 18),
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom,
+            painter, _make_font(_FONT_ZONE_ID),
+            QRectF(ox, id_y, rect.width() - _MARGIN * 2, id_h),
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
             zone.id.strip(), dark_bg,
         )
 
-        # ── Content icons ────────────────────────────────────
+        # ── Content rows: icons with counts below ────────────
         cy = oy + _HEADER_H
         cx = ox
 
-        # Towns/Castles rows - player row labeled "P:", neutral labeled "N:"
         if _has_towns(zone):
             pt = zone.player_towns
             nt = zone.neutral_towns
-            label_font = QFont("Helvetica", 9, QFont.Weight.Bold)
+            label_font = _make_font(_FONT_LABEL)
             fg = QColor(255, 255, 255) if dark_bg else QColor(30, 30, 30)
-            label_w = 18
+            label_w = 38
 
             has_player = (
                 _int_val(pt.min_castles) > 0 or _int_val(pt.min_towns) > 0
@@ -330,16 +342,16 @@ class ZoneItem(QGraphicsRectItem):
 
                 p_c = _int_val(pt.min_castles)
                 if p_c > 0:
-                    draw_castle(painter, ix, cy, _ICO)
-                    draw_value_label(painter, ix + _ICO + 3, cy, 22, _ICO,
-                                     str(p_c), 11, dark_bg)
+                    _draw_icon_with_count(
+                        painter, draw_castle, ix, cy,
+                        _ICO, str(p_c), dark_bg)
                     ix += _CELL_W
 
                 p_t = _int_val(pt.min_towns)
                 if p_t > 0:
-                    draw_town(painter, ix, cy, _ICO)
-                    draw_value_label(painter, ix + _ICO + 3, cy, 22, _ICO,
-                                     str(p_t), 11, dark_bg)
+                    _draw_icon_with_count(
+                        painter, draw_town, ix, cy,
+                        _ICO, str(p_t), dark_bg)
                 cy += _ROW_H
 
             # Neutral buildings row
@@ -355,19 +367,19 @@ class ZoneItem(QGraphicsRectItem):
 
                 n_c = _int_val(nt.min_castles)
                 if n_c > 0:
-                    draw_castle(painter, ix, cy, _ICO)
-                    draw_value_label(painter, ix + _ICO + 3, cy, 22, _ICO,
-                                     str(n_c), 11, dark_bg)
+                    _draw_icon_with_count(
+                        painter, draw_castle, ix, cy,
+                        _ICO, str(n_c), dark_bg)
                     ix += _CELL_W
 
                 n_t = _int_val(nt.min_towns)
                 if n_t > 0:
-                    draw_town(painter, ix, cy, _ICO)
-                    draw_value_label(painter, ix + _ICO + 3, cy, 22, _ICO,
-                                     str(n_t), 11, dark_bg)
+                    _draw_icon_with_count(
+                        painter, draw_town, ix, cy,
+                        _ICO, str(n_t), dark_bg)
                 cy += _ROW_H
 
-        # Resource mines in grid
+        # Resource mines: icon on top, count below
         mines = _active_mines(zone)
         if mines:
             for i, (res, mc, md) in enumerate(mines):
@@ -375,10 +387,11 @@ class ZoneItem(QGraphicsRectItem):
                 if i > 0 and col == 0:
                     cy += _ROW_H
                 ix = cx + col * _CELL_W
-                draw_mine(painter, ix, cy, _ICO, res)
-                label = f"{mc} / {md}" if md > 0 else str(mc)
-                draw_value_label(painter, ix + _ICO + 3, cy, 28, _ICO,
-                                 label, 11, dark_bg)
+                label = f"{mc}/{md}" if md > 0 else str(mc)
+                _draw_icon_with_count(
+                    painter,
+                    lambda p, x, y, s, r=res: draw_mine(p, x, y, s, r),
+                    ix, cy, _ICO, label, dark_bg)
             cy += _ROW_H
 
     def center_point(self):

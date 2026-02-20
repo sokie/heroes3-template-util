@@ -36,7 +36,7 @@ class ConnectionPanel(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         self._title = QLabel("Connection Settings")
-        self._title.setStyleSheet("font-weight: bold; font-size: 13px; padding: 4px;")
+        self._title.setStyleSheet("font-weight: bold; font-size: 14px; color: #2c2c2c; padding: 6px 4px;")
         layout.addWidget(self._title)
 
         # Main properties
