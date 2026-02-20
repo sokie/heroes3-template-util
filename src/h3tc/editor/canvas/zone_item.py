@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 
 from h3tc.editor.canvas.icons import (
     draw_castle,
+    draw_computer_icon,
     draw_mine,
     draw_swords,
     draw_town,
@@ -65,11 +66,9 @@ def _zone_color(zone: Zone) -> QColor:
       100-199 = silver
       200+   = gold
     """
-    if zone.human_start == "x":
+    if zone.human_start == "x" or zone.computer_start == "x":
         owner = zone.ownership.strip()
         return _PLAYER_COLORS.get(owner, QColor(100, 149, 237))
-    if zone.computer_start == "x":
-        return QColor(100, 100, 100)
 
     # All non-player zones: color by treasure value
     tval = _treasure_value(zone)
@@ -77,7 +76,7 @@ def _zone_color(zone: Zone) -> QColor:
         return QColor(200, 170, 100)   # Gold
     if tval >= 100:
         return QColor(185, 190, 200)   # Silver
-    return QColor(160, 160, 160)       # Gray
+    return QColor(225, 225, 225)       # Light gray
 
 
 def _int_val(s: str) -> int:
@@ -234,13 +233,26 @@ class ZoneItem(QGraphicsRectItem):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         # ── Background ───────────────────────────────────────
+        is_junction = zone.junction.strip().lower() == "x"
+        if is_junction:
+            # Thick gray rim (~25% of surface) for junction zones
+            rim_w = min(rect.width(), rect.height()) * 0.14
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QBrush(QColor(140, 140, 140)))
+            painter.drawRoundedRect(rect, ZONE_CORNER_RADIUS, ZONE_CORNER_RADIUS)
+            # Inner fill
+            inner = rect.adjusted(rim_w, rim_w, -rim_w, -rim_w)
+            inner_r = max(ZONE_CORNER_RADIUS - rim_w * 0.5, 1)
+            painter.setBrush(QBrush(self._color))
+            painter.drawRoundedRect(inner, inner_r, inner_r)
         if self.isSelected():
-            pen = QPen(SELECTION_COLOR, ZONE_SELECTED_BORDER_WIDTH)
-        else:
-            pen = QPen(self._color.darker(140), ZONE_BORDER_WIDTH)
-        painter.setPen(pen)
-        painter.setBrush(QBrush(self._color))
-        painter.drawRoundedRect(rect, ZONE_CORNER_RADIUS, ZONE_CORNER_RADIUS)
+            painter.setPen(QPen(SELECTION_COLOR, ZONE_SELECTED_BORDER_WIDTH))
+            painter.setBrush(Qt.BrushStyle.NoBrush if is_junction else QBrush(self._color))
+            painter.drawRoundedRect(rect, ZONE_CORNER_RADIUS, ZONE_CORNER_RADIUS)
+        elif not is_junction:
+            painter.setPen(QPen(self._color.darker(140), ZONE_BORDER_WIDTH))
+            painter.setBrush(QBrush(self._color))
+            painter.drawRoundedRect(rect, ZONE_CORNER_RADIUS, ZONE_CORNER_RADIUS)
 
         dark_bg = _is_dark_bg(self._color)
 
@@ -266,10 +278,21 @@ class ZoneItem(QGraphicsRectItem):
             sx = rect.x() + rect.width() - _MARGIN - sw
             draw_swords(painter, sx, oy, _ICO, strength)
 
-        # Zone ID (bottom-right corner)
+        # Zone ID (bottom-right corner) with PC icon for computer start
+        id_y = rect.y() + rect.height() - 20
+        is_computer = zone.computer_start.strip().lower() == "x"
+        if is_computer:
+            # Draw PC icon to the left of the zone ID
+            pc_size = 16
+            id_text = zone.id.strip()
+            # Approximate text width for positioning
+            fm_width = max(len(id_text) * 8, 12)
+            pc_x = rect.x() + rect.width() - _MARGIN - fm_width - pc_size - 4
+            pc_y = id_y + 1
+            draw_computer_icon(painter, pc_x, pc_y, pc_size)
         _draw_text(
             painter, QFont("Helvetica", 10, QFont.Weight.Bold),
-            QRectF(ox, rect.y() + rect.height() - 20,
+            QRectF(ox, id_y,
                    rect.width() - _MARGIN * 2, 18),
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom,
             zone.id.strip(), dark_bg,

@@ -31,7 +31,7 @@ ZONE_COLORS = {
         "7": QColor(80, 190, 190),    # Player 7 - Teal
         "8": QColor(200, 140, 180),   # Player 8 - Pink
     },
-    "computer_start": QColor(100, 100, 100),
+    "computer_start": QColor(100, 149, 237),  # Uses player color like human_start
     "treasure": QColor(210, 180, 140),
     "junction": QColor(218, 165, 32),
     "default": QColor(180, 180, 180),

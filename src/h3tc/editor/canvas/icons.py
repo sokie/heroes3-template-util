@@ -246,6 +246,45 @@ def draw_swords(painter: QPainter, x: float, y: float, size: float,
     painter.restore()
 
 
+# ── Computer Icon ──────────────────────────────────────────────────
+
+def draw_computer_icon(painter: QPainter, x: float, y: float, size: float) -> None:
+    """Draw a small monitor/PC icon (like HOTA editor) for computer start zones."""
+    s = size
+    painter.save()
+    painter.translate(x, y)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    pen = _pen(s)
+    painter.setPen(pen)
+
+    # Monitor body
+    mw, mh = s * 0.80, s * 0.55
+    mx = (s - mw) / 2
+    my = s * 0.08
+    painter.setBrush(QBrush(QColor(60, 60, 70)))
+    painter.drawRoundedRect(QRectF(mx, my, mw, mh), s * 0.04, s * 0.04)
+
+    # Screen
+    sw, sh = mw * 0.80, mh * 0.75
+    sx = mx + (mw - sw) / 2
+    sy = my + (mh - sh) / 2
+    painter.setBrush(QBrush(QColor(140, 180, 220)))
+    painter.drawRect(QRectF(sx, sy, sw, sh))
+
+    # Stand
+    stand_w = s * 0.20
+    stand_h = s * 0.15
+    painter.setBrush(QBrush(QColor(80, 80, 90)))
+    painter.drawRect(QRectF((s - stand_w) / 2, my + mh, stand_w, stand_h))
+
+    # Base
+    base_w = s * 0.45
+    base_h = s * 0.06
+    painter.drawRect(QRectF((s - base_w) / 2, my + mh + stand_h, base_w, base_h))
+
+    painter.restore()
+
+
 # ── Resource Icons ──────────────────────────────────────────────────
 
 def _draw_wood(painter: QPainter, x: float, y: float, s: float) -> None:

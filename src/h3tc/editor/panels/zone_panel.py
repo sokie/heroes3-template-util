@@ -201,8 +201,8 @@ class ZonePanel(QWidget):
         self._owner.currentIndexChanged.connect(self._on_owner_changed)
         self._widgets.append(self._owner)
 
-        # Enable/disable owner based on type
-        self._owner.setEnabled(type_idx == 0)  # Only for Human Start
+        # Enable owner for Human Start and Computer Start
+        self._owner.setEnabled(type_idx in (0, 1))
 
         # Position constraints
         self._bind_spin(self._pos_min_human, z, "min_human", sub_obj="positions")
@@ -215,8 +215,8 @@ class ZonePanel(QWidget):
             return
         for i, field in enumerate(_ZONE_TYPE_FIELDS):
             setattr(self._zone, field, "x" if i == index else "")
-        self._owner.setEnabled(index == 0)
-        if index != 0:
+        self._owner.setEnabled(index in (0, 1))
+        if index not in (0, 1):
             self._zone.ownership = ""
             self._owner.blockSignals(True)
             self._owner.setCurrentIndex(0)
