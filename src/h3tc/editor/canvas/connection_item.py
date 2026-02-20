@@ -146,8 +146,8 @@ class ConnectionItem(QGraphicsPathItem):
             painter.setFont(font)
             fm = painter.fontMetrics()
             text_rect = fm.boundingRect(label)
-            label_w = text_rect.width() + 14
-            label_h = text_rect.height() + 6
+            label_w = text_rect.width() + 20
+            label_h = text_rect.height() + 10
 
             # Find the point along the line at half distance, then offset
             line = QLineF(self._p1, self._p2)

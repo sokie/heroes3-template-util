@@ -22,7 +22,16 @@ class TemplateScene(QGraphicsScene):
         self._zone_items: dict[str, ZoneItem] = {}  # zone_id -> ZoneItem
         self._connection_items: list[ConnectionItem] = []
         self._template_map: TemplateMap | None = None
+        self._snap_to_grid = False
         self.selectionChanged.connect(self._on_selection_changed)
+
+    @property
+    def snap_to_grid(self) -> bool:
+        return self._snap_to_grid
+
+    @snap_to_grid.setter
+    def snap_to_grid(self, enabled: bool) -> None:
+        self._snap_to_grid = enabled
 
     @property
     def template_map(self) -> TemplateMap | None:

@@ -7,7 +7,7 @@ Zone colors: player start = player color, treasure = gray/gold, junction = gold.
 
 import math
 
-from PySide6.QtCore import QRectF, Qt
+from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import (
     QGraphicsDropShadowEffect,
@@ -43,7 +43,7 @@ _CELL_W = _ICO + 14 # Cell width: icon + padding (count goes below, not beside)
 _MARGIN = 16        # Margin inside zone rect
 _HEADER_H = _ICO + 20 # Height for header row (chest+treasure, swords)
 _ROW_H = _ICO + 28  # Height per content row (icon + count text below)
-_COLS = 3           # Icons per row
+_COLS = 5           # Icons per row
 
 # Font sizes (scene-coordinate points)
 _FONT_TREASURE = 34  # Treasure value next to chest
@@ -126,18 +126,29 @@ def _treasure_value(zone: Zone) -> int:
     return int(total / 1000) if total > 0 else 0
 
 
-def _content_rows(zone: Zone) -> int:
+def _content_metrics(zone: Zone) -> tuple[int, int]:
+    """Return (rows, max_icons_in_any_row) for zone content."""
     rows = 0
+    max_cols = 0
     pt = zone.player_towns
     nt = zone.neutral_towns
-    if _int_val(pt.min_castles) > 0 or _int_val(pt.min_towns) > 0:
+
+    p_count = (_int_val(pt.min_castles) > 0) + (_int_val(pt.min_towns) > 0)
+    if p_count > 0:
         rows += 1
-    if _int_val(nt.min_castles) > 0 or _int_val(nt.min_towns) > 0:
+        max_cols = max(max_cols, p_count)
+
+    n_count = (_int_val(nt.min_castles) > 0) + (_int_val(nt.min_towns) > 0)
+    if n_count > 0:
         rows += 1
+        max_cols = max(max_cols, n_count)
+
     mines = _active_mines(zone)
     if mines:
         rows += math.ceil(len(mines) / _COLS)
-    return rows
+        max_cols = max(max_cols, min(len(mines), _COLS))
+
+    return rows, max_cols
 
 
 def _zone_size(zone: Zone) -> tuple[float, float]:
@@ -147,20 +158,23 @@ def _zone_size(zone: Zone) -> tuple[float, float]:
     except ValueError:
         base = 5
 
-    rows = _content_rows(zone)
+    rows, max_cols = _content_metrics(zone)
     scale = math.sqrt(max(base, 1)) * ZONE_SIZE_SCALE
 
     # Width: header needs chest + treasure text + gap + swords
-    header_w = _ICO + 8 + 80 + 20 + _ICO * 2.1  # chest + val + gap + swords
-    # Content needs COLS icon cells + label prefix
-    content_w = 38 + _COLS * _CELL_W + _MARGIN * 2
+    header_w = _ICO + 8 + 80 + 20 + _ICO  # chest + val + gap + swords
+    # Content width adapts to actual number of icons per row
+    actual_cols = max(max_cols, 1)
+    content_w = 38 + actual_cols * _CELL_W + _MARGIN * 2
     w = max(header_w + _MARGIN * 2, content_w, scale * 3, 160)
 
     # Height: header + content rows + ID line + margins
     content_h = _HEADER_H + rows * _ROW_H + _MARGIN * 2 + 40
     h = max(content_h, scale * 2, 110)
 
-    return w, h
+    # Keep zones square
+    side = max(w, h)
+    return side, side
 
 
 def _is_dark_bg(color: QColor) -> bool:
@@ -289,8 +303,7 @@ class ZoneItem(QGraphicsRectItem):
             hx += 84
 
         if strength > 0:
-            sw = _ICO + 2 * _ICO * 0.55
-            sx = rect.x() + rect.width() - _MARGIN - sw
+            sx = rect.x() + rect.width() - _MARGIN - _ICO
             draw_swords(painter, sx, oy, _ICO, strength)
 
         # ── Zone ID (bottom-right) ───────────────────────────
@@ -399,6 +412,13 @@ class ZoneItem(QGraphicsRectItem):
         return self.mapToScene(rect.center())
 
     def itemChange(self, change, value):
+        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
+            scene = self.scene()
+            if scene and getattr(scene, 'snap_to_grid', False):
+                from h3tc.editor.constants import GRID_SIZE
+                x = round(value.x() / GRID_SIZE) * GRID_SIZE
+                y = round(value.y() / GRID_SIZE) * GRID_SIZE
+                value = QPointF(x, y)
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
             scene = self.scene()
             if scene and hasattr(scene, "zone_moved"):

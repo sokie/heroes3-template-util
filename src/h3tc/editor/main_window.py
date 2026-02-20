@@ -110,6 +110,12 @@ class MainWindow(QMainWindow):
         self._act_compact.setShortcut(QKeySequence("Ctrl+-"))
         self._act_compact.setToolTip("Decrease distance between zones")
 
+        self._act_snap_grid = QAction("Snap to Grid", self)
+        self._act_snap_grid.setCheckable(True)
+        self._act_snap_grid.setChecked(False)
+        self._act_snap_grid.setShortcut(QKeySequence("Ctrl+G"))
+        self._act_snap_grid.setToolTip("Snap zones to grid when dragging (Ctrl+G)")
+
     def _build_toolbar(self) -> None:
         toolbar = QToolBar("Main")
         toolbar.setMovable(False)
@@ -126,6 +132,7 @@ class MainWindow(QMainWindow):
         toolbar.addAction(self._act_zoom_fit)
         toolbar.addAction(self._act_spread)
         toolbar.addAction(self._act_compact)
+        toolbar.addAction(self._act_snap_grid)
 
     def _build_menubar(self) -> None:
         mb = self.menuBar()
@@ -149,6 +156,8 @@ class MainWindow(QMainWindow):
         view_menu.addAction(self._act_zoom_fit)
         view_menu.addAction(self._act_spread)
         view_menu.addAction(self._act_compact)
+        view_menu.addSeparator()
+        view_menu.addAction(self._act_snap_grid)
 
     def _build_ui(self) -> None:
         central = QWidget()
@@ -212,6 +221,7 @@ class MainWindow(QMainWindow):
         self._act_zoom_fit.triggered.connect(self._view.zoom_to_fit)
         self._act_spread.triggered.connect(lambda: self._on_spread_compact(1.3))
         self._act_compact.triggered.connect(lambda: self._on_spread_compact(0.7))
+        self._act_snap_grid.toggled.connect(self._on_snap_toggled)
 
         # Scene selection
         self._scene.zone_selected.connect(self._on_zone_selected)
@@ -553,6 +563,12 @@ class MainWindow(QMainWindow):
         self._scene.add_connection(connection)
         self._map_panel.set_map(self._state.current_map)
         self._statusbar.showMessage(f"Added connection {z1_id} - {z2_id}")
+
+    def _on_snap_toggled(self, checked: bool) -> None:
+        self._scene.snap_to_grid = checked
+        self._statusbar.showMessage(
+            "Snap to grid: ON" if checked else "Snap to grid: OFF"
+        )
 
     def _on_spread_compact(self, factor: float) -> None:
         """Spread or compact zones while preserving viewport center."""
