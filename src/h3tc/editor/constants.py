@@ -21,15 +21,15 @@ ZONE_ID_FONT_SIZE = 9
 # Zone colors by type
 ZONE_COLORS = {
     "human_start": {
-        "0": QColor(100, 149, 237),   # Default blue (unowned)
-        "1": QColor(70, 130, 230),    # Player 1 - Blue
-        "2": QColor(220, 80, 80),     # Player 2 - Red
-        "3": QColor(100, 180, 100),   # Player 3 - Green (tan in H3)
-        "4": QColor(160, 100, 200),   # Player 4 - Purple
+        "0": QColor(100, 149, 237),   # Default (unowned)
+        "1": QColor(220, 80, 80),     # Player 1 - Red
+        "2": QColor(70, 130, 230),    # Player 2 - Blue
+        "3": QColor(210, 180, 120),   # Player 3 - Tan
+        "4": QColor(100, 180, 100),   # Player 4 - Green
         "5": QColor(220, 160, 60),    # Player 5 - Orange
-        "6": QColor(80, 190, 190),    # Player 6 - Teal
-        "7": QColor(200, 140, 180),   # Player 7 - Pink
-        "8": QColor(160, 160, 160),   # Player 8 - Gray
+        "6": QColor(160, 100, 200),   # Player 6 - Purple
+        "7": QColor(80, 190, 190),    # Player 7 - Teal
+        "8": QColor(200, 140, 180),   # Player 8 - Pink
     },
     "computer_start": QColor(100, 100, 100),
     "treasure": QColor(210, 180, 140),

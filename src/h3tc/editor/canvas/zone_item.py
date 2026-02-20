@@ -45,14 +45,14 @@ _COLS = 3           # Icons per row
 
 # Player colors (matching H3)
 _PLAYER_COLORS = {
-    "1": QColor(55, 110, 220),    # Blue
-    "2": QColor(210, 65, 65),     # Red
-    "3": QColor(90, 170, 80),     # Green (tan in H3)
-    "4": QColor(160, 90, 200),    # Purple
+    "1": QColor(210, 65, 65),     # Red
+    "2": QColor(55, 110, 220),    # Blue
+    "3": QColor(200, 170, 110),   # Tan
+    "4": QColor(90, 170, 80),     # Green
     "5": QColor(220, 150, 40),    # Orange
-    "6": QColor(50, 180, 180),    # Teal
-    "7": QColor(200, 130, 170),   # Pink
-    "8": QColor(150, 150, 150),   # Gray
+    "6": QColor(160, 90, 200),    # Purple
+    "7": QColor(50, 180, 180),    # Teal
+    "8": QColor(200, 130, 170),   # Pink
 }
 
 
