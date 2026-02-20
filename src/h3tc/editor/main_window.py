@@ -243,6 +243,16 @@ class MainWindow(QMainWindow):
             pack = parser.parse(filepath)
             source_format = parser.format_name
 
+            # Extract image_settings positions before conversion strips them
+            hota_positions: dict[str, dict[str, tuple[float, float]]] = {}
+            if parser.format_id != "sod":
+                from h3tc.editor.canvas.layout import image_settings_layout
+
+                for m in pack.maps:
+                    pos = image_settings_layout(m)
+                    if pos:
+                        hota_positions[m.name] = pos
+
             # Convert non-SOD formats to SOD for editing
             if parser.format_id != "sod":
                 pack = hota_to_sod(pack)
@@ -255,8 +265,11 @@ class MainWindow(QMainWindow):
         self._state.current_map_index = 0
         self._state.mark_clean()
 
-        # Load layout sidecar
+        # Load layout sidecar, with HOTA image_settings as fallback
         layouts = load_layout(filepath)
+        for map_name, positions in hota_positions.items():
+            if map_name not in layouts:
+                layouts[map_name] = positions
 
         # Setup map selector
         self._map_selector.set_pack(pack)

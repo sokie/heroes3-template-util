@@ -4,7 +4,7 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QGraphicsScene
 
 from h3tc.editor.canvas.connection_item import ConnectionItem
-from h3tc.editor.canvas.layout import force_directed_layout
+from h3tc.editor.canvas.layout import force_directed_layout, image_settings_layout
 from h3tc.editor.canvas.zone_item import ZoneItem
 from h3tc.models import Connection, TemplateMap, Zone
 
@@ -42,8 +42,11 @@ class TemplateScene(QGraphicsScene):
         if not template_map.zones:
             return
 
-        # Compute layout for zones without saved positions
-        auto_positions = force_directed_layout(template_map)
+        # Try image_settings positions first (HOTA editor coordinates)
+        auto_positions = image_settings_layout(template_map)
+        if auto_positions is None:
+            # Fall back to grid-snapped force-directed layout
+            auto_positions = force_directed_layout(template_map)
         positions = saved_positions or {}
 
         # Create zone items

@@ -1,9 +1,158 @@
-"""Force-directed layout for zone positioning (Fruchterman-Reingold)."""
+"""Layout algorithms for zone positioning."""
 
 import math
 import random
 
 from h3tc.models import TemplateMap
+
+
+def _estimate_zone_width(zone) -> float:
+    """Estimate zone box width from base_size (matches ZoneItem._zone_size logic)."""
+    try:
+        base = int(zone.base_size) if zone.base_size.strip() else 5
+    except ValueError:
+        base = 5
+    scale = math.sqrt(max(base, 1)) * 11.0  # ZONE_SIZE_SCALE
+    content_w = 3 * 54 + 20  # _COLS * _CELL_W + _MARGIN * 2
+    return max(content_w, scale * 3, 100)
+
+
+def image_settings_layout(
+    template_map: TemplateMap,
+    gap: float = 30.0,
+) -> dict[str, tuple[float, float]] | None:
+    """Extract zone positions from HOTA image_settings coordinates.
+
+    Computes scale dynamically so zone boxes don't overlap.
+
+    Args:
+        template_map: The template map containing zones.
+        gap: Minimum pixel gap between zone edges.
+
+    Returns:
+        Dict mapping zone ID -> (x, y) position, or None if too few zones
+        have valid image_settings.
+    """
+    zones = template_map.zones
+    if not zones:
+        return None
+
+    # Parse raw positions and estimate widths
+    raw: dict[str, tuple[float, float]] = {}
+    widths: dict[str, float] = {}
+    zone_by_id: dict[str, object] = {}
+    for zone in zones:
+        zid = zone.id.strip()
+        img = zone.zone_options.image_settings
+        if not img or not img.strip():
+            continue
+        parts = img.strip().split()
+        try:
+            values = [float(v) for v in parts]
+        except ValueError:
+            continue
+        if len(values) < 2:
+            continue
+        # First two values are the zone's own position.
+        # 4-value entries add a mirror position (x2, y2) which we ignore.
+        raw[zid] = (values[0], values[1])
+        widths[zid] = _estimate_zone_width(zone)
+        zone_by_id[zid] = zone
+
+    # Require at least half the zones to have valid coordinates
+    if len(raw) < len(zones) / 2:
+        return None
+
+    # Compute scale: ensure no pair of zones overlaps
+    # For each pair: scale * dist >= (w1 + w2) / 2 + gap
+    zone_ids = list(raw.keys())
+    min_scale = 1.0
+    for i, z1 in enumerate(zone_ids):
+        x1, y1 = raw[z1]
+        for j in range(i + 1, len(zone_ids)):
+            z2 = zone_ids[j]
+            x2, y2 = raw[z2]
+            dist = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+            if dist < 0.1:
+                continue
+            needed = (widths[z1] + widths[z2]) / 2 + gap
+            required_scale = needed / dist
+            if required_scale > min_scale:
+                min_scale = required_scale
+
+    # Apply scale and shift to positive coordinates
+    positions: dict[str, tuple[float, float]] = {}
+    for zid, (x, y) in raw.items():
+        positions[zid] = (x * min_scale, y * min_scale)
+
+    if positions:
+        min_x = min(p[0] for p in positions.values())
+        min_y = min(p[1] for p in positions.values())
+        margin = 100.0
+        off_x = -min_x + margin
+        off_y = -min_y + margin
+        positions = {zid: (x + off_x, y + off_y) for zid, (x, y) in positions.items()}
+
+    return positions
+
+
+def snap_to_grid(
+    positions: dict[str, tuple[float, float]],
+    grid_size: float = 150.0,
+) -> dict[str, tuple[float, float]]:
+    """Snap positions to a grid and resolve overlaps.
+
+    Args:
+        positions: Dict mapping zone ID -> (x, y) position.
+        grid_size: Size of grid cells.
+
+    Returns:
+        Dict mapping zone ID -> snapped (x, y) position.
+    """
+    if not positions:
+        return {}
+
+    # Snap each position to nearest grid point
+    snapped: dict[str, tuple[float, float]] = {}
+    for zid, (x, y) in positions.items():
+        gx = round(x / grid_size) * grid_size
+        gy = round(y / grid_size) * grid_size
+        snapped[zid] = (gx, gy)
+
+    # Resolve overlaps: if multiple zones map to the same cell, nudge extras
+    occupied: dict[tuple[float, float], str] = {}
+    for zid, pos in snapped.items():
+        if pos not in occupied:
+            occupied[pos] = zid
+        else:
+            # Find nearest empty adjacent cell (spiral search)
+            placed = False
+            for radius in range(1, 20):
+                for dx in range(-radius, radius + 1):
+                    for dy in range(-radius, radius + 1):
+                        if abs(dx) != radius and abs(dy) != radius:
+                            continue
+                        candidate = (pos[0] + dx * grid_size, pos[1] + dy * grid_size)
+                        if candidate not in occupied:
+                            snapped[zid] = candidate
+                            occupied[candidate] = zid
+                            placed = True
+                            break
+                    if placed:
+                        break
+                if placed:
+                    break
+
+    # Shift so all positions are positive with margin
+    if snapped:
+        min_x = min(p[0] for p in snapped.values())
+        min_y = min(p[1] for p in snapped.values())
+        if min_x < 50 or min_y < 50:
+            off_x = -min_x + grid_size if min_x < 50 else 0
+            off_y = -min_y + grid_size if min_y < 50 else 0
+            snapped = {zid: (x + off_x, y + off_y) for zid, (x, y) in snapped.items()}
+
+    return snapped
 
 
 def force_directed_layout(
@@ -121,4 +270,5 @@ def force_directed_layout(
             positions[zid][0] = max(margin, min(w - margin, positions[zid][0]))
             positions[zid][1] = max(margin, min(h - margin, positions[zid][1]))
 
-    return {zid: (pos[0], pos[1]) for zid, pos in positions.items()}
+    result = {zid: (pos[0], pos[1]) for zid, pos in positions.items()}
+    return snap_to_grid(result)
