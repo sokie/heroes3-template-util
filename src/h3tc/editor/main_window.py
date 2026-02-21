@@ -116,8 +116,14 @@ class MainWindow(QMainWindow):
         self._act_snap_grid.setShortcut(QKeySequence("Ctrl+G"))
         self._act_snap_grid.setToolTip("Snap zones to grid when dragging (Ctrl+G)")
 
-        self._act_reid = QAction("Re-ID Zones", self)
-        self._act_reid.setToolTip("Renumber zone IDs sequentially based on canvas position")
+        self._act_reid_dfs = QAction("Re-ID (DFS)", self)
+        self._act_reid_dfs.setToolTip(
+            "Re-ID zones using depth-first traversal — good for square/radial maps"
+        )
+        self._act_reid_bfs = QAction("Re-ID (BFS)", self)
+        self._act_reid_bfs.setToolTip(
+            "Re-ID zones using breadth-first traversal — good for wide/horizontal maps"
+        )
 
     def _build_toolbar(self) -> None:
         toolbar = QToolBar("Main")
@@ -137,7 +143,8 @@ class MainWindow(QMainWindow):
         toolbar.addAction(self._act_compact)
         toolbar.addAction(self._act_snap_grid)
         toolbar.addSeparator()
-        toolbar.addAction(self._act_reid)
+        toolbar.addAction(self._act_reid_dfs)
+        toolbar.addAction(self._act_reid_bfs)
 
     def _build_menubar(self) -> None:
         mb = self.menuBar()
@@ -157,7 +164,8 @@ class MainWindow(QMainWindow):
         edit_menu.addSeparator()
         edit_menu.addAction(self._act_delete)
         edit_menu.addSeparator()
-        edit_menu.addAction(self._act_reid)
+        edit_menu.addAction(self._act_reid_dfs)
+        edit_menu.addAction(self._act_reid_bfs)
 
         view_menu = mb.addMenu("&View")
         view_menu.addAction(self._act_zoom_fit)
@@ -229,7 +237,8 @@ class MainWindow(QMainWindow):
         self._act_spread.triggered.connect(lambda: self._on_spread_compact(1.3))
         self._act_compact.triggered.connect(lambda: self._on_spread_compact(0.7))
         self._act_snap_grid.toggled.connect(self._on_snap_toggled)
-        self._act_reid.triggered.connect(self._on_reid_zones)
+        self._act_reid_dfs.triggered.connect(lambda: self._on_reid_zones("dfs"))
+        self._act_reid_bfs.triggered.connect(lambda: self._on_reid_zones("bfs"))
 
         # Scene selection
         self._scene.zone_selected.connect(self._on_zone_selected)
@@ -607,11 +616,11 @@ class MainWindow(QMainWindow):
             self._map_panel.set_map(self._state.current_map)
         self._statusbar.showMessage("Deleted selected item(s)")
 
-    def _on_reid_zones(self) -> None:
+    def _on_reid_zones(self, method: str = "dfs") -> None:
         if not self._state.current_map:
             return
 
-        mapping = self._scene.reid_zones()
+        mapping = self._scene.reid_zones(method=method)
         if mapping is None:
             self._statusbar.showMessage("Re-ID: zone IDs are already in order")
             return
@@ -634,8 +643,9 @@ class MainWindow(QMainWindow):
         self._map_panel.set_map(self._state.current_map)
 
         changes = [f"{old} → {new}" for old, new in mapping.items() if old != new]
+        label = method.upper()
         self._statusbar.showMessage(
-            f"Re-ID: renumbered {len(changes)} zone(s)"
+            f"Re-ID ({label}): renumbered {len(changes)} zone(s)"
         )
 
     # ── Selection Handling ───────────────────────────────────────────────

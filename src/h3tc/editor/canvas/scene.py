@@ -201,8 +201,11 @@ class TemplateScene(QGraphicsScene):
                 ci.refresh_path()
                 break
 
-    def reid_zones(self) -> dict[str, str] | None:
-        """Re-ID all zones based on position-aware DFS traversal.
+    def reid_zones(self, method: str = "dfs") -> dict[str, str] | None:
+        """Re-ID all zones based on connectivity-preserving traversal.
+
+        Args:
+            method: "dfs" (depth-first) or "bfs" (breadth-first).
 
         Returns:
             Mapping of old_id -> new_id, or None if no changes needed.
@@ -215,7 +218,7 @@ class TemplateScene(QGraphicsScene):
             (c.zone1.strip(), c.zone2.strip())
             for c in self._template_map.connections
         ]
-        mapping = compute_zone_reids(positions, connections)
+        mapping = compute_zone_reids(positions, connections, method=method)
 
         if not mapping:
             return None
