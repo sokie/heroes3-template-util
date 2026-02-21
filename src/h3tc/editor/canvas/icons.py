@@ -364,23 +364,24 @@ def _draw_wood(painter: QPainter, x: float, y: float, s: float) -> None:
     pen = _pen(s)
     painter.setPen(pen)
 
-    # Three stacked logs, slightly offset like the H3 icon
+    # Triangle arrangement: 2 on bottom, 1 on top nestled in the groove
+    lw = s * 0.58
+    lh = s * 0.26
+    sep = lh * 0.55  # horizontal separation between bottom logs
+    bot_y = s * 0.54
+    top_y = bot_y - lh * 0.72
+
     logs = [
-        # (x_offset, y, bark_color, end_color)
-        (s * 0.04, s * 0.58, QColor(140, 85, 30), QColor(180, 140, 80)),
-        (s * -0.02, s * 0.38, QColor(160, 100, 40), QColor(195, 155, 90)),
-        (s * 0.06, s * 0.18, QColor(150, 90, 35), QColor(185, 145, 85)),
+        # Draw order: bottom-right (furthest back), bottom-left, top
+        (s * 0.08 + sep, bot_y, QColor(150, 90, 35), QColor(185, 145, 85)),
+        (s * 0.08, bot_y, QColor(140, 85, 30), QColor(180, 140, 80)),
+        (s * 0.08 + sep / 2, top_y, QColor(160, 100, 40), QColor(195, 155, 90)),
     ]
-    lw = s * 0.62
-    lh = s * 0.22
 
-    for lx_off, ly, bark_c, end_c in logs:
-        lx = s * 0.12 + lx_off
-
-        # Log body (bark)
+    def _draw_log_body(lx, ly, bark_c):
+        painter.setPen(pen)
         painter.setBrush(QBrush(bark_c))
         painter.drawRoundedRect(QRectF(lx, ly, lw, lh), lh * 0.45, lh * 0.45)
-
         # Dark grain lines on bark
         painter.setPen(QPen(bark_c.darker(130), max(s * 0.02, 0.5)))
         for g in [0.3, 0.5, 0.7]:
@@ -390,18 +391,22 @@ def _draw_wood(painter: QPainter, x: float, y: float, s: float) -> None:
             )
         painter.setPen(pen)
 
-        # Round end (cut face) on the right
+    def _draw_log_end(lx, ly, end_c):
         er = lh * 0.45
         ecx = lx + lw - s * 0.01
         ecy = ly + lh / 2
+        painter.setPen(pen)
         painter.setBrush(QBrush(end_c))
         painter.drawEllipse(QPointF(ecx, ecy), er, er)
-
-        # Inner ring on cut face
         painter.setPen(QPen(end_c.darker(120), max(s * 0.02, 0.5)))
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawEllipse(QPointF(ecx, ecy), er * 0.55, er * 0.55)
         painter.setPen(pen)
+
+    # Draw back-to-front: bottom-left (furthest) → bottom-right → top
+    for lx, ly, bark_c, end_c in logs:
+        _draw_log_body(lx, ly, bark_c)
+        _draw_log_end(lx, ly, end_c)
 
     painter.restore()
 
@@ -532,32 +537,37 @@ def _draw_sulfur(painter: QPainter, x: float, y: float, s: float) -> None:
     painter.translate(x, y)
     pen = _pen(s)
 
-    triangle = QPolygonF([
-        QPointF(s * 0.08, s * 0.82),
-        QPointF(s * 0.50, s * 0.22),
-        QPointF(s * 0.92, s * 0.82),
-    ])
+    # Pyramid with just the very tip rounded
+    mound = QPainterPath()
+    mound.moveTo(s * 0.08, s * 0.82)
+    mound.lineTo(s * 0.44, s * 0.26)
+    mound.quadTo(s * 0.50, s * 0.20, s * 0.56, s * 0.26)
+    mound.lineTo(s * 0.92, s * 0.82)
+    mound.closeSubpath()
+
+    left_face = QPainterPath()
+    left_face.moveTo(s * 0.08, s * 0.82)
+    left_face.lineTo(s * 0.44, s * 0.26)
+    left_face.quadTo(s * 0.50, s * 0.20, s * 0.50, s * 0.23)
+    left_face.lineTo(s * 0.50, s * 0.82)
+    left_face.closeSubpath()
 
     # Fill the two faces without outline first
     painter.setPen(Qt.PenStyle.NoPen)
 
     # Right/darker face
     painter.setBrush(QBrush(QColor(215, 185, 95)))
-    painter.drawPolygon(triangle)
+    painter.drawPath(mound)
 
     # Left/lighter face (overdraws left half)
     painter.setBrush(QBrush(QColor(235, 210, 120)))
-    painter.drawPolygon(QPolygonF([
-        QPointF(s * 0.08, s * 0.82),
-        QPointF(s * 0.50, s * 0.22),
-        QPointF(s * 0.50, s * 0.82),
-    ]))
+    painter.drawPath(left_face)
 
     # Highlight near peak
     painter.setBrush(QBrush(QColor(250, 235, 150, 160)))
     painter.drawPolygon(QPolygonF([
         QPointF(s * 0.38, s * 0.50),
-        QPointF(s * 0.50, s * 0.22),
+        QPointF(s * 0.50, s * 0.24),
         QPointF(s * 0.50, s * 0.50),
     ]))
 
@@ -570,7 +580,7 @@ def _draw_sulfur(painter: QPainter, x: float, y: float, s: float) -> None:
     # Outline on top — uniform thickness on all edges
     painter.setPen(pen)
     painter.setBrush(Qt.BrushStyle.NoBrush)
-    painter.drawPolygon(triangle)
+    painter.drawPath(mound)
 
     painter.restore()
 
