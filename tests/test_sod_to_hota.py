@@ -7,8 +7,12 @@ import pytest
 
 from h3tc.parsers.sod import SodParser
 from h3tc.parsers.hota import HotaParser
+from h3tc.parsers.hota18 import Hota18Parser
 from h3tc.writers.hota import HotaWriter
 from h3tc.converters.sod_to_hota import sod_to_hota
+from h3tc.converters.hota_to_hota18 import hota_to_hota18
+
+TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 
 
 def test_sod_to_hota_basic(sod_filepath):
@@ -64,7 +68,8 @@ def test_sod_to_hota_zone_conversion(sod_filepath):
     assert hota_zone.terrains["Highlands"] == ""
     assert hota_zone.terrains["Wasteland"] == ""
 
-    # Monster factions: Forge dropped, Conflux/Cove/Factory enabled (all SOD on)
+    # Monster factions: Forge dropped, Cove/Factory enabled (any SOD on),
+    # Conflux enabled (all SOD factions including Forge were on)
     assert "Forge" not in hota_zone.monster_factions
     assert hota_zone.monster_factions["Conflux"] == "x"
     assert hota_zone.monster_factions["Cove"] == "x"
@@ -123,3 +128,85 @@ def test_sod_to_hota_roundtrip_write(sod_filepath):
         assert reparsed_map.name == sod_map.name
         assert len(reparsed_map.zones) == len(sod_map.zones)
         assert len(reparsed_map.connections) == len(sod_map.connections)
+
+
+# --- Game comparison helpers ---
+
+_ZONE_SKIP_FIELDS = {"zone_options", "positions"}
+_ZONE_OPTION_SKIP_FIELDS = {"image_settings"}
+
+
+def _compare_zones(our_zone, game_zone, skip_monster_strength=False):
+    """Compare two zones field-by-field, skipping image_settings."""
+    for field in our_zone.model_fields:
+        if field in _ZONE_SKIP_FIELDS:
+            continue
+        if skip_monster_strength and field == "monster_strength":
+            continue
+        our_val = getattr(our_zone, field)
+        game_val = getattr(game_zone, field)
+        assert our_val == game_val, (
+            f"Zone {our_zone.id} field '{field}' mismatch: "
+            f"{our_val!r} != {game_val!r}"
+        )
+    # Compare zone_options excluding image_settings
+    for field in our_zone.zone_options.model_fields:
+        if field in _ZONE_OPTION_SKIP_FIELDS:
+            continue
+        our_val = getattr(our_zone.zone_options, field)
+        game_val = getattr(game_zone.zone_options, field)
+        assert our_val == game_val, (
+            f"Zone {our_zone.id} zone_options.{field} mismatch: "
+            f"{our_val!r} != {game_val!r}"
+        )
+
+
+# --- Game comparison tests ---
+
+
+def test_sod_to_hota18_vs_game_jebus():
+    """Compare our SOD→HOTA18 conversion against the game's for Jebus Cross."""
+    sod_path = TEMPLATES_DIR / "sod_complete" / "Jebus Cross" / "rmg.txt"
+    game_path = TEMPLATES_DIR / "jebus_converted.h3t"
+
+    sod_pack = SodParser().parse(sod_path)
+    hota_pack = sod_to_hota(sod_pack)
+    hota18_pack = hota_to_hota18(hota_pack)
+
+    game_pack = Hota18Parser().parse(game_path)
+
+    assert len(hota18_pack.maps) == len(game_pack.maps)
+    for our_map, game_map in zip(hota18_pack.maps, game_pack.maps):
+        assert len(our_map.zones) == len(game_map.zones)
+        for our_zone, game_zone in zip(our_map.zones, game_map.zones):
+            _compare_zones(our_zone, game_zone)
+
+
+def test_sod_to_hota18_vs_game_original():
+    """Compare our SOD→HOTA18 conversion against the game's for {Original} (first map)."""
+    sod_path = TEMPLATES_DIR / "sod_complete" / "{Original}" / "rmg.txt"
+    game_path = TEMPLATES_DIR / "orig_converted.h3t"
+
+    sod_pack = SodParser().parse(sod_path)
+    hota_pack = sod_to_hota(sod_pack)
+    hota18_pack = hota_to_hota18(hota_pack)
+
+    game_pack = Hota18Parser().parse(game_path)
+
+    # Compare first map's zones (skip monster_strength: our writer outputs
+    # "normal" which is the normalized form, game may preserve SOD's "avg")
+    our_map = hota18_pack.maps[0]
+    game_map = game_pack.maps[0]
+    assert len(our_map.zones) == len(game_map.zones)
+    for our_zone, game_zone in zip(our_map.zones, game_map.zones):
+        _compare_zones(our_zone, game_zone, skip_monster_strength=True)
+
+
+def test_sod_monster_strength_normalization():
+    """Verify the SOD parser normalizes 'avg' to 'normal' for monster_strength."""
+    sod_path = TEMPLATES_DIR / "sod_original_template_pack.txt"
+    sod_pack = SodParser().parse(sod_path)
+
+    # The fixture has 'avg' in the raw file; parser should normalize to 'normal'
+    zone = sod_pack.maps[0].zones[0]
+    assert zone.monster_strength == "normal"

@@ -73,6 +73,11 @@ def _convert_map(tmap: TemplateMap, defaults: dict) -> TemplateMap:
     )
 
 
+def _any_enabled(values: dict[str, str], keys: list[str]) -> bool:
+    """Check if any of the given keys have 'x' in the values dict."""
+    return any(values.get(k, "").strip() == "x" for k in keys)
+
+
 def _all_enabled(values: dict[str, str], keys: list[str]) -> bool:
     """Check if all given keys have 'x' in the values dict."""
     return all(values.get(k, "").strip() == "x" for k in keys)
@@ -90,16 +95,21 @@ _SOD_MONSTER_KEYS = [
     "Neutral", "Castle", "Rampart", "Tower", "Inferno", "Necropolis",
     "Dungeon", "Stronghold", "Fortress",
 ]
+# Includes Forge — used for Conflux auto-enable (only when all SOD factions on)
+_SOD_MONSTER_KEYS_ALL = [
+    "Neutral", "Castle", "Rampart", "Tower", "Inferno", "Necropolis",
+    "Dungeon", "Stronghold", "Fortress", "Forge",
+]
 
 
 def _convert_zone(zone: Zone, defaults: dict) -> Zone:
     """Convert a zone from SOD to HOTA format."""
-    # Town types: if all SOD factions enabled, also enable Cove/Factory
-    all_towns_on = _all_enabled(zone.town_types, _SOD_TOWN_KEYS)
+    # Town types: if any SOD factions enabled, also enable Cove/Factory
+    any_towns_on = _any_enabled(zone.town_types, _SOD_TOWN_KEYS)
     town_types = {}
     for faction in TOWN_FACTIONS_HOTA:
         if faction in ("Cove", "Factory"):
-            town_types[faction] = "x" if all_towns_on else ""
+            town_types[faction] = "x" if any_towns_on else ""
         else:
             town_types[faction] = zone.town_types.get(faction, "")
 
@@ -112,14 +122,18 @@ def _convert_zone(zone: Zone, defaults: dict) -> Zone:
         else:
             terrains[terrain] = zone.terrains.get(terrain, "")
 
-    # Monster factions: drop Forge; if all SOD factions enabled, also enable new ones
-    all_monsters_on = _all_enabled(zone.monster_factions, _SOD_MONSTER_KEYS)
+    # Monster factions: drop Forge; Cove/Factory enabled when any SOD faction on;
+    # Conflux enabled only when all SOD factions (including Forge) are on
+    any_monsters_on = _any_enabled(zone.monster_factions, _SOD_MONSTER_KEYS)
+    all_monsters_on = _all_enabled(zone.monster_factions, _SOD_MONSTER_KEYS_ALL)
     monster_factions = {}
     for faction in MONSTER_FACTIONS_HOTA:
         if faction in zone.monster_factions:
             monster_factions[faction] = zone.monster_factions[faction]
-        elif faction in ("Conflux", "Cove", "Factory"):
+        elif faction == "Conflux":
             monster_factions[faction] = "x" if all_monsters_on else ""
+        elif faction in ("Cove", "Factory"):
+            monster_factions[faction] = "x" if any_monsters_on else ""
         else:
             monster_factions[faction] = ""
 

@@ -17,6 +17,7 @@ from h3tc.models import (
     ZoneOptions,
 )
 from h3tc.parsers.base import BaseParser
+from h3tc.parsers.hota import _normalize_monster_strength
 
 # Canonical names: SOD "Elemental" -> "Conflux"
 _SOD_TOWN_CANONICAL = [
@@ -155,7 +156,7 @@ class SodParser(BaseParser):
             mine_density=mine_density,
             terrain_match=row[c.TERRAIN_MATCH],
             terrains=terrains,
-            monster_strength=row[c.MONSTER_STRENGTH],
+            monster_strength=_normalize_monster_strength(row[c.MONSTER_STRENGTH]),
             monster_match=row[c.MONSTER_MATCH],
             monster_factions=monster_factions,
             treasure_tiers=treasure_tiers,

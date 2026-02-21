@@ -52,26 +52,26 @@ def _convert_map(tmap: TemplateMap) -> TemplateMap:
     )
 
 
-def _all_enabled(values: dict[str, str], keys: list[str]) -> bool:
-    """Check if all given keys have 'x' in the values dict."""
-    return all(values.get(k, "").strip() == "x" for k in keys)
+def _any_enabled(values: dict[str, str], keys: list[str]) -> bool:
+    """Check if any of the given keys have 'x' in the values dict."""
+    return any(values.get(k, "").strip() == "x" for k in keys)
 
 
 def _convert_zone(zone: Zone) -> Zone:
     """Convert a zone from HOTA 1.7.x to 1.8.x — add Bulwark."""
-    # Town types: add Bulwark (enable if all existing factions enabled)
-    all_towns_on = _all_enabled(zone.town_types, TOWN_FACTIONS_HOTA)
+    # Town types: add Bulwark (enable if any existing factions enabled)
+    any_towns_on = _any_enabled(zone.town_types, TOWN_FACTIONS_HOTA)
     town_types = dict(zone.town_types)
-    town_types["Bulwark"] = "x" if all_towns_on else ""
+    town_types["Bulwark"] = "x" if any_towns_on else ""
 
     # Monster factions: add Bulwark
     hota_monster_keys = [
         "Neutral", "Castle", "Rampart", "Tower", "Inferno", "Necropolis",
         "Dungeon", "Stronghold", "Fortress", "Conflux", "Cove", "Factory",
     ]
-    all_monsters_on = _all_enabled(zone.monster_factions, hota_monster_keys)
+    any_monsters_on = _any_enabled(zone.monster_factions, hota_monster_keys)
     monster_factions = dict(zone.monster_factions)
-    monster_factions["Bulwark"] = "x" if all_monsters_on else ""
+    monster_factions["Bulwark"] = "x" if any_monsters_on else ""
 
     return Zone(
         id=zone.id,
