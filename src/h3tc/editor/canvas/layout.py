@@ -7,15 +7,31 @@ from collections import defaultdict, deque
 from h3tc.models import TemplateMap
 
 
-def _estimate_zone_width(zone) -> float:
-    """Estimate zone box width from base_size (matches ZoneItem._zone_size logic)."""
+def _estimate_zone_size(zone) -> float:
+    """Estimate zone box side length (matches ZoneItem._zone_size logic).
+
+    Zones are square, so width == height == max(w, h).
+    """
     try:
         base = int(zone.base_size) if zone.base_size.strip() else 5
     except ValueError:
         base = 5
     scale = math.sqrt(max(base, 1)) * 11.0  # ZONE_SIZE_SCALE
-    content_w = 3 * 54 + 20  # _COLS * _CELL_W + _MARGIN * 2
-    return max(content_w, scale * 3, 100)
+    # Approximate content size — assume ~2 icons per row as typical
+    _CELL_W = 66   # _ICO (52) + 14
+    _MARGIN = 16
+    _ICO = 52
+    _HEADER_H = _ICO + 20
+    _ROW_H = _ICO + 28
+    actual_cols = 2  # typical: castle + town
+    content_w = 38 + actual_cols * _CELL_W + _MARGIN * 2
+    header_w = _ICO + 8 + 80 + 20 + _ICO + _MARGIN * 2
+    w = max(header_w, content_w, scale * 3, 160)
+    # Estimate 1 content row as typical
+    content_h = _HEADER_H + 1 * _ROW_H + _MARGIN * 2 + 40
+    h = max(content_h, scale * 2, 110)
+    # Zones are square
+    return max(w, h)
 
 
 def _build_adjacency(
@@ -144,7 +160,7 @@ def _align_rows_cols(
 
 def image_settings_layout(
     template_map: TemplateMap,
-    gap: float = 30.0,
+    gap: float = 80.0,
 ) -> dict[str, tuple[float, float]] | None:
     """Extract zone positions from HOTA image_settings coordinates.
 
@@ -181,7 +197,7 @@ def image_settings_layout(
         # First two values are the zone's own position.
         # 4-value entries add a mirror position (x2, y2) which we ignore.
         raw[zid] = (values[0], values[1])
-        widths[zid] = _estimate_zone_width(zone)
+        widths[zid] = _estimate_zone_size(zone)
         zone_by_id[zid] = zone
 
     # Require at least half the zones to have valid coordinates
@@ -395,14 +411,10 @@ def force_directed_layout(
     w = width * scale_factor
     h = height * scale_factor
 
-    # Zone sizes for repulsion scaling
+    # Zone sizes for repulsion scaling (use actual estimated side length)
     zone_sizes: dict[str, float] = {}
     for z in zones:
-        try:
-            bs = int(z.base_size) if z.base_size.strip() else 5
-        except ValueError:
-            bs = 5
-        zone_sizes[z.id.strip()] = math.sqrt(max(bs, 1)) * 10
+        zone_sizes[z.id.strip()] = _estimate_zone_size(z)
 
     # Initial random positions
     positions: dict[str, list[float]] = {}
@@ -413,7 +425,7 @@ def force_directed_layout(
         ]
 
     area = w * h
-    k = math.sqrt(area / n) * 1.0  # Optimal distance
+    k = math.sqrt(area / n) * 1.7  # Optimal distance
 
     for iteration in range(iterations):
         temp = max(0.01, (1.0 - iteration / iterations) * w * 0.1)
@@ -429,7 +441,8 @@ def force_directed_layout(
                 dist = max(math.sqrt(dx * dx + dy * dy), 0.01)
 
                 # Scale repulsion by zone sizes
-                size_factor = (zone_sizes.get(z1, 40) + zone_sizes.get(z2, 40)) / 60
+                avg_size = (zone_sizes.get(z1, 200) + zone_sizes.get(z2, 200)) / 2
+                size_factor = avg_size / 150
                 repulsion = (k * k * size_factor) / dist
 
                 fx = (dx / dist) * repulsion
@@ -469,8 +482,8 @@ def force_directed_layout(
     result = {zid: (pos[0], pos[1]) for zid, pos in positions.items()}
 
     # Dynamic grid size based on largest zone width
-    max_width = max((_estimate_zone_width(z) for z in zones), default=150)
-    gap = 30.0
+    max_width = max((_estimate_zone_size(z) for z in zones), default=150)
+    gap = 80.0
     grid_size = max_width + gap
 
     # Post-processing pipeline
