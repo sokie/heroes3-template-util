@@ -38,13 +38,15 @@ _SOD_TOWN_CANONICAL = [
 _ZONE_TYPES = ["Human Start", "Computer Start", "Treasure", "Junction"]
 _ZONE_TYPE_FIELDS = ["human_start", "computer_start", "treasure", "junction"]
 
-# Monster strength options (SOD values are text)
+# Monster strength options (internal values match SOD format)
 _MONSTER_STRENGTHS = [
     ("None", ""),
     ("Weak", "weak"),
     ("Average", "normal"),
     ("Strong", "strong"),
 ]
+# HOTA uses different labels; map them to internal values for lookup
+_MONSTER_STRENGTH_ALIASES = {"avg": "normal", "none": ""}
 
 
 def _make_spinbox(minimum: int = 0, maximum: int = 99999) -> QSpinBox:
@@ -498,7 +500,9 @@ class ZonePanel(QWidget):
 
         # Monster strength
         self._monster_strength.blockSignals(True)
-        raw = z.monster_strength.strip()
+        raw = z.monster_strength.strip().lower()
+        # Normalize HOTA aliases to internal values
+        raw = _MONSTER_STRENGTH_ALIASES.get(raw, raw)
         idx = 0
         for i, (_, val) in enumerate(_MONSTER_STRENGTHS):
             if val == raw:

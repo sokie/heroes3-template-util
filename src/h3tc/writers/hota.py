@@ -9,6 +9,17 @@ from h3tc.enums import MONSTER_FACTIONS_HOTA, RESOURCES, TERRAINS_HOTA, TOWN_FAC
 from h3tc.models import Connection, TemplatePack, TemplateMap, Zone
 from h3tc.writers.base import BaseWriter
 
+# Internal (SOD) values → HOTA values
+_INTERNAL_TO_HOTA_STRENGTH = {
+    "": "none",
+    "normal": "avg",
+}
+
+
+def _denormalize_monster_strength(internal: str) -> str:
+    """Convert internal (SOD) monster strength values to HOTA values."""
+    return _INTERNAL_TO_HOTA_STRENGTH.get(internal.strip().lower(), internal)
+
 
 class HotaWriter(BaseWriter):
     format_id = "hota17"
@@ -159,7 +170,7 @@ class HotaWriter(BaseWriter):
         for i, terrain in enumerate(self._terrains):
             row[c.TERRAINS_START + i] = zone.terrains.get(terrain, "")
 
-        row[c.MONSTER_STRENGTH] = zone.monster_strength
+        row[c.MONSTER_STRENGTH] = _denormalize_monster_strength(zone.monster_strength)
         row[c.MONSTER_MATCH] = zone.monster_match
 
         for i, faction in enumerate(self._monster_factions):

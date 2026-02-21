@@ -21,6 +21,17 @@ from h3tc.models import (
 )
 from h3tc.parsers.base import BaseParser
 
+# HOTA uses different monster strength labels than SOD
+_HOTA_STRENGTH_TO_INTERNAL = {
+    "none": "",
+    "avg": "normal",
+}
+
+
+def _normalize_monster_strength(raw: str) -> str:
+    """Convert HOTA monster strength values to internal (SOD) values."""
+    return _HOTA_STRENGTH_TO_INTERNAL.get(raw.strip().lower(), raw)
+
 
 class HotaParser(BaseParser):
     format_id = "hota17"
@@ -193,7 +204,7 @@ class HotaParser(BaseParser):
             mine_density=mine_density,
             terrain_match=row[c.TERRAIN_MATCH],
             terrains=terrains,
-            monster_strength=row[c.MONSTER_STRENGTH],
+            monster_strength=_normalize_monster_strength(row[c.MONSTER_STRENGTH]),
             monster_match=row[c.MONSTER_MATCH],
             monster_factions=monster_factions,
             treasure_tiers=treasure_tiers,

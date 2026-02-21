@@ -103,6 +103,7 @@ def _active_mines(zone: Zone) -> list[tuple[str, int, int]]:
 _STRENGTH_MAP = {
     "weak": 1,
     "normal": 2,
+    "avg": 2,
     "strong": 3,
 }
 
