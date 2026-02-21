@@ -116,6 +116,9 @@ class MainWindow(QMainWindow):
         self._act_snap_grid.setShortcut(QKeySequence("Ctrl+G"))
         self._act_snap_grid.setToolTip("Snap zones to grid when dragging (Ctrl+G)")
 
+        self._act_reid = QAction("Re-ID Zones", self)
+        self._act_reid.setToolTip("Renumber zone IDs sequentially based on canvas position")
+
     def _build_toolbar(self) -> None:
         toolbar = QToolBar("Main")
         toolbar.setMovable(False)
@@ -133,6 +136,8 @@ class MainWindow(QMainWindow):
         toolbar.addAction(self._act_spread)
         toolbar.addAction(self._act_compact)
         toolbar.addAction(self._act_snap_grid)
+        toolbar.addSeparator()
+        toolbar.addAction(self._act_reid)
 
     def _build_menubar(self) -> None:
         mb = self.menuBar()
@@ -151,6 +156,8 @@ class MainWindow(QMainWindow):
         edit_menu.addAction(self._act_add_connection)
         edit_menu.addSeparator()
         edit_menu.addAction(self._act_delete)
+        edit_menu.addSeparator()
+        edit_menu.addAction(self._act_reid)
 
         view_menu = mb.addMenu("&View")
         view_menu.addAction(self._act_zoom_fit)
@@ -222,6 +229,7 @@ class MainWindow(QMainWindow):
         self._act_spread.triggered.connect(lambda: self._on_spread_compact(1.3))
         self._act_compact.triggered.connect(lambda: self._on_spread_compact(0.7))
         self._act_snap_grid.toggled.connect(self._on_snap_toggled)
+        self._act_reid.triggered.connect(self._on_reid_zones)
 
         # Scene selection
         self._scene.zone_selected.connect(self._on_zone_selected)
@@ -419,6 +427,18 @@ class MainWindow(QMainWindow):
             return fixes
 
         for tm in self._state.pack.maps:
+            # Check for empty or duplicate zone IDs
+            seen_ids: dict[str, int] = {}
+            for zone in tm.zones:
+                zid = zone.id.strip()
+                if not zid:
+                    fixes.append(f"Map '{tm.name}': zone with empty ID found")
+                elif zid in seen_ids:
+                    fixes.append(
+                        f"Map '{tm.name}': duplicate zone ID '{zid}'"
+                    )
+                seen_ids[zid] = seen_ids.get(zid, 0) + 1
+
             for zone in tm.zones:
                 zid = zone.id.strip()
 
@@ -586,6 +606,37 @@ class MainWindow(QMainWindow):
         if self._state.current_map:
             self._map_panel.set_map(self._state.current_map)
         self._statusbar.showMessage("Deleted selected item(s)")
+
+    def _on_reid_zones(self) -> None:
+        if not self._state.current_map:
+            return
+
+        mapping = self._scene.reid_zones()
+        if mapping is None:
+            self._statusbar.showMessage("Re-ID: zone IDs are already in order")
+            return
+
+        # Validate: no duplicate IDs and sequential 1..N
+        zones = self._state.current_map.zones
+        zone_ids = [z.id.strip() for z in zones]
+        expected = {str(i) for i in range(1, len(zones) + 1)}
+        if len(set(zone_ids)) != len(zone_ids) or set(zone_ids) != expected:
+            QMessageBox.critical(
+                self,
+                "Re-ID Error",
+                "Zone IDs are not sequential after re-ID. This is a bug.",
+            )
+            return
+
+        # Clear panel selection and mark dirty
+        self._panel_stack.setCurrentWidget(self._empty_panel)
+        self._on_modified()
+        self._map_panel.set_map(self._state.current_map)
+
+        changes = [f"{old} → {new}" for old, new in mapping.items() if old != new]
+        self._statusbar.showMessage(
+            f"Re-ID: renumbered {len(changes)} zone(s)"
+        )
 
     # ── Selection Handling ───────────────────────────────────────────────
 

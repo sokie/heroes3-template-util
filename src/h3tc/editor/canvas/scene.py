@@ -4,7 +4,11 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QGraphicsScene
 
 from h3tc.editor.canvas.connection_item import ConnectionItem
-from h3tc.editor.canvas.layout import force_directed_layout, image_settings_layout
+from h3tc.editor.canvas.layout import (
+    compute_zone_reids,
+    force_directed_layout,
+    image_settings_layout,
+)
 from h3tc.editor.canvas.zone_item import ZoneItem
 from h3tc.models import Connection, TemplateMap, Zone
 
@@ -196,6 +200,58 @@ class TemplateScene(QGraphicsScene):
             if ci.connection is connection:
                 ci.refresh_path()
                 break
+
+    def reid_zones(self) -> dict[str, str] | None:
+        """Re-ID all zones based on position-aware DFS traversal.
+
+        Returns:
+            Mapping of old_id -> new_id, or None if no changes needed.
+        """
+        if not self._template_map:
+            return None
+
+        positions = self.get_zone_positions()
+        connections = [
+            (c.zone1.strip(), c.zone2.strip())
+            for c in self._template_map.connections
+        ]
+        mapping = compute_zone_reids(positions, connections)
+
+        if not mapping:
+            return None
+
+        # Check if it's a no-op
+        if all(old == new for old, new in mapping.items()):
+            return None
+
+        # Update zone IDs
+        for zone in self._template_map.zones:
+            old_id = zone.id.strip()
+            if old_id in mapping:
+                zone.id = mapping[old_id]
+
+        # Update connection references
+        for conn in self._template_map.connections:
+            old1 = conn.zone1.strip()
+            old2 = conn.zone2.strip()
+            if old1 in mapping:
+                conn.zone1 = mapping[old1]
+            if old2 in mapping:
+                conn.zone2 = mapping[old2]
+
+        # Rebuild _zone_items dict with new keys (same ZoneItem objects)
+        new_zone_items: dict[str, ZoneItem] = {}
+        for old_id, item in self._zone_items.items():
+            new_id = mapping.get(old_id, old_id)
+            new_zone_items[new_id] = item
+        self._zone_items = new_zone_items
+
+        # Refresh all zone items to repaint ID labels
+        for item in self._zone_items.values():
+            item.refresh()
+
+        self.scene_modified.emit()
+        return mapping
 
     def _on_selection_changed(self) -> None:
         selected = self.selectedItems()

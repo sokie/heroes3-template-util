@@ -479,3 +479,78 @@ def force_directed_layout(
     result = _align_rows_cols(result, grid_size)
 
     return result
+
+
+def compute_zone_reids(
+    positions: dict[str, tuple[float, float]],
+    connections: list[tuple[str, str]],
+) -> dict[str, str]:
+    """Compute new sequential zone IDs based on position-aware DFS traversal.
+
+    Zones are renumbered 1..N following a left-to-right DFS that keeps
+    connected clusters consecutively numbered.
+
+    Args:
+        positions: Dict mapping zone ID -> (x, y) canvas position.
+        connections: List of (zone1_id, zone2_id) connection pairs.
+
+    Returns:
+        Dict mapping old_id -> new_id (string IDs starting at "1").
+        Returns empty dict if no zones.
+    """
+    if not positions:
+        return {}
+
+    zone_ids = list(positions.keys())
+    adj = _build_adjacency(zone_ids, connections)
+
+    visited: set[str] = set()
+    order: list[str] = []
+
+    # Find connected zones via iterative DFS
+    # Start from leftmost zone (min x, break ties by min y)
+    connected = [zid for zid in zone_ids if adj.get(zid)]
+    disconnected = [zid for zid in zone_ids if not adj.get(zid)]
+
+    if connected:
+        root = min(connected, key=lambda z: (positions[z][0], positions[z][1]))
+        stack = [root]
+        visited.add(root)
+
+        while stack:
+            node = stack.pop()
+            order.append(node)
+            # Sort neighbors by x then y, reversed so leftmost is popped first
+            neighbors = sorted(
+                [n for n in adj[node] if n not in visited],
+                key=lambda z: (positions[z][0], positions[z][1]),
+                reverse=True,
+            )
+            for n in neighbors:
+                visited.add(n)
+                stack.append(n)
+
+        # Handle any remaining connected components
+        remaining = [zid for zid in connected if zid not in visited]
+        while remaining:
+            root = min(remaining, key=lambda z: (positions[z][0], positions[z][1]))
+            stack = [root]
+            visited.add(root)
+            while stack:
+                node = stack.pop()
+                order.append(node)
+                neighbors = sorted(
+                    [n for n in adj[node] if n not in visited],
+                    key=lambda z: (positions[z][0], positions[z][1]),
+                    reverse=True,
+                )
+                for n in neighbors:
+                    visited.add(n)
+                    stack.append(n)
+            remaining = [zid for zid in connected if zid not in visited]
+
+    # Append disconnected zones sorted by position
+    disconnected.sort(key=lambda z: (positions[z][0], positions[z][1]))
+    order.extend(disconnected)
+
+    return {old_id: str(i + 1) for i, old_id in enumerate(order)}
