@@ -4,34 +4,8 @@ import math
 import random
 from collections import defaultdict, deque
 
+from h3tc.editor.canvas.zone_item import zone_size
 from h3tc.models import TemplateMap
-
-
-def _estimate_zone_size(zone) -> float:
-    """Estimate zone box side length (matches ZoneItem._zone_size logic).
-
-    Zones are square, so width == height == max(w, h).
-    """
-    try:
-        base = int(zone.base_size) if zone.base_size.strip() else 5
-    except ValueError:
-        base = 5
-    scale = math.sqrt(max(base, 1)) * 11.0  # ZONE_SIZE_SCALE
-    # Approximate content size — assume ~2 icons per row as typical
-    _CELL_W = 66   # _ICO (52) + 14
-    _MARGIN = 16
-    _ICO = 52
-    _HEADER_H = _ICO + 20
-    _ROW_H = _ICO + 28
-    actual_cols = 2  # typical: castle + town
-    content_w = 38 + actual_cols * _CELL_W + _MARGIN * 2
-    header_w = _ICO + 8 + 80 + 20 + _ICO + _MARGIN * 2
-    w = max(header_w, content_w, scale * 3, 160)
-    # Estimate 1 content row as typical
-    content_h = _HEADER_H + 1 * _ROW_H + _MARGIN * 2 + 40
-    h = max(content_h, scale * 2, 110)
-    # Zones are square
-    return max(w, h)
 
 
 def _build_adjacency(
@@ -197,7 +171,7 @@ def image_settings_layout(
         # First two values are the zone's own position.
         # 4-value entries add a mirror position (x2, y2) which we ignore.
         raw[zid] = (values[0], values[1])
-        widths[zid] = _estimate_zone_size(zone)
+        widths[zid] = zone_size(zone)[0]
         zone_by_id[zid] = zone
 
     # Require at least half the zones to have valid coordinates
@@ -414,7 +388,7 @@ def force_directed_layout(
     # Zone sizes for repulsion scaling (use actual estimated side length)
     zone_sizes: dict[str, float] = {}
     for z in zones:
-        zone_sizes[z.id.strip()] = _estimate_zone_size(z)
+        zone_sizes[z.id.strip()] = zone_size(z)[0]
 
     # Initial random positions
     positions: dict[str, list[float]] = {}
@@ -482,7 +456,7 @@ def force_directed_layout(
     result = {zid: (pos[0], pos[1]) for zid, pos in positions.items()}
 
     # Dynamic grid size based on largest zone width
-    max_width = max((_estimate_zone_size(z) for z in zones), default=150)
+    max_width = max((zone_size(z)[0] for z in zones), default=150)
     gap = 80.0
     grid_size = max_width + gap
 

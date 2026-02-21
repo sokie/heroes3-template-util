@@ -152,7 +152,7 @@ def _content_metrics(zone: Zone) -> tuple[int, int]:
     return rows, max_cols
 
 
-def _zone_size(zone: Zone) -> tuple[float, float]:
+def zone_size(zone: Zone) -> tuple[float, float]:
     """Calculate zone pixel size - proportional to base_size, fits content."""
     try:
         base = int(zone.base_size) if zone.base_size.strip() else 5
@@ -224,7 +224,7 @@ class ZoneItem(QGraphicsRectItem):
     """A draggable zone rectangle with content icons."""
 
     def __init__(self, zone: Zone) -> None:
-        w, h = _zone_size(zone)
+        w, h = zone_size(zone)
         super().__init__(0, 0, w, h)
         self.zone = zone
         self._color = _zone_color(zone)
@@ -247,7 +247,7 @@ class ZoneItem(QGraphicsRectItem):
 
     def refresh(self) -> None:
         self._color = _zone_color(self.zone)
-        w, h = _zone_size(self.zone)
+        w, h = zone_size(self.zone)
         self.setRect(0, 0, w, h)
         self._update_appearance()
         self.update()
