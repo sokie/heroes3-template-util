@@ -436,17 +436,33 @@ class MainWindow(QMainWindow):
             return fixes
 
         for tm in self._state.pack.maps:
-            # Check for empty or duplicate zone IDs
-            seen_ids: dict[str, int] = {}
-            for zone in tm.zones:
-                zid = zone.id.strip()
-                if not zid:
-                    fixes.append(f"Map '{tm.name}': zone with empty ID found")
-                elif zid in seen_ids:
+            # Check zone IDs are sequential 1..N with no gaps/duplicates
+            expected = [str(i + 1) for i in range(len(tm.zones))]
+            actual = [z.id.strip() for z in tm.zones]
+            if actual != expected:
+                # Build old→new mapping
+                id_map: dict[str, str] = {}
+                changes = []
+                for zone, new_id in zip(tm.zones, expected):
+                    old_id = zone.id.strip()
+                    if old_id != new_id:
+                        id_map[old_id] = new_id
+                        changes.append(f"{old_id or '(empty)'} → {new_id}")
+                        zone.id = new_id
+                # Update connection references
+                if id_map:
+                    for conn in tm.connections:
+                        z1 = conn.zone1.strip()
+                        z2 = conn.zone2.strip()
+                        if z1 in id_map:
+                            conn.zone1 = id_map[z1]
+                        if z2 in id_map:
+                            conn.zone2 = id_map[z2]
+                if changes:
                     fixes.append(
-                        f"Map '{tm.name}': duplicate zone ID '{zid}'"
+                        f"Map '{tm.name}': re-numbered zone IDs: "
+                        + ", ".join(changes)
                     )
-                seen_ids[zid] = seen_ids.get(zid, 0) + 1
 
             for zone in tm.zones:
                 zid = zone.id.strip()

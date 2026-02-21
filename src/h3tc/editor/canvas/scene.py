@@ -165,10 +165,26 @@ class TemplateScene(QGraphicsScene):
         self.scene_modified.emit()
 
     def refresh_zone(self, zone: Zone) -> None:
-        """Refresh a zone item's appearance after model changes."""
-        zid = zone.id.strip()
-        if zid in self._zone_items:
-            self._zone_items[zid].refresh()
+        """Refresh a zone item's appearance after model changes.
+
+        Also syncs _zone_items dict keys if the zone ID was changed.
+        """
+        # Find the item by object identity (handles ID changes)
+        item = None
+        old_key = None
+        for key, zi in self._zone_items.items():
+            if zi.zone is zone:
+                item = zi
+                old_key = key
+                break
+        if item is None:
+            return
+
+        new_key = zone.id.strip()
+        if old_key != new_key:
+            del self._zone_items[old_key]
+            self._zone_items[new_key] = item
+        item.refresh()
 
     def scale_zone_distances(self, factor: float) -> None:
         """Scale distances between all zones by factor (>1 = spread, <1 = compact)."""
