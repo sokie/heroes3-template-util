@@ -249,6 +249,9 @@ class TemplateScene(QGraphicsScene):
             if old_id in mapping:
                 zone.id = mapping[old_id]
 
+        # Reorder zones list by new ID so save validation won't re-number
+        self._template_map.zones.sort(key=lambda z: int(z.id.strip()))
+
         # Update connection references
         for conn in self._template_map.connections:
             old1 = conn.zone1.strip()
