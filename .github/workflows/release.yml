@@ -28,10 +28,12 @@ jobs:
       - name: Install Linux display dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libegl1 libxkbcommon0 libxcb-cursor0 xvfb
+          sudo apt-get install -y libegl1 libxkbcommon0 libxcb-cursor0
 
       - name: Run tests
-        run: xvfb-run pytest tests/ -v
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: pytest tests/ -v
 
   build:
     needs: test

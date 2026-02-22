@@ -1,5 +1,8 @@
 """Chaos/edge-case tests for Re-ID (DFS/BFS) and save validation."""
 
+import os
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
 import pytest
 from PySide6.QtWidgets import QApplication
 

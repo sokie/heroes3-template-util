@@ -1,5 +1,8 @@
 """Tests for Re-ID handling of duplicate/missing zone IDs and list reordering."""
 
+import os
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
 import pytest
 from PySide6.QtWidgets import QApplication
 
