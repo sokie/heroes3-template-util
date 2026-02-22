@@ -229,6 +229,71 @@ class TemplateScene(QGraphicsScene):
         if not self._template_map:
             return None
 
+        # --- De-duplicate zone IDs first ---
+        # If there are duplicate IDs, assign unique temp IDs so every zone
+        # has its own entry in positions/connections/zone_items.
+        seen: dict[str, int] = {}
+        dedup_map: dict[int, tuple[str, str]] = {}  # zone index → (old, temp)
+        needs_dedup = False
+        for i, zone in enumerate(self._template_map.zones):
+            zid = zone.id.strip()
+            if zid in seen:
+                needs_dedup = True
+            seen[zid] = seen.get(zid, 0) + 1
+
+        if needs_dedup:
+            # Assign temporary unique IDs based on list index
+            used: set[str] = set()
+            for i, zone in enumerate(self._template_map.zones):
+                old_id = zone.id.strip()
+                temp_id = str(i + 1)
+                # Avoid collisions with existing IDs not yet reassigned
+                while temp_id in used:
+                    temp_id = f"_t{i + 1}"
+                dedup_map[i] = (old_id, temp_id)
+                used.add(temp_id)
+
+            # Find ZoneItems on the scene that match each zone object
+            zone_to_item: dict[int, ZoneItem] = {}
+            all_items = [
+                item for item in self.items()
+                if isinstance(item, ZoneItem)
+            ]
+            for i, zone in enumerate(self._template_map.zones):
+                for item in all_items:
+                    if item.zone is zone:
+                        zone_to_item[i] = item
+                        break
+
+            # Apply temp IDs
+            for i, zone in enumerate(self._template_map.zones):
+                _, temp_id = dedup_map[i]
+                zone.id = temp_id
+
+            # Update connections: build old→temp mapping per occurrence
+            # Connections reference zone IDs; with duplicates we can't know
+            # which duplicate they refer to, so just update to temp IDs
+            # by matching zone objects in the list
+            conn_id_map: dict[str, str] = {}
+            for _, (old_id, temp_id) in dedup_map.items():
+                # Last one wins — for duplicates this is imperfect but the
+                # re-ID will fix everything anyway
+                conn_id_map[old_id] = temp_id
+            for conn in self._template_map.connections:
+                z1 = conn.zone1.strip()
+                z2 = conn.zone2.strip()
+                if z1 in conn_id_map:
+                    conn.zone1 = conn_id_map[z1]
+                if z2 in conn_id_map:
+                    conn.zone2 = conn_id_map[z2]
+
+            # Rebuild _zone_items with temp IDs
+            self._zone_items.clear()
+            for i, zone in enumerate(self._template_map.zones):
+                if i in zone_to_item:
+                    self._zone_items[zone.id.strip()] = zone_to_item[i]
+
+        # --- Now run the normal Re-ID with unique IDs ---
         positions = self.get_zone_positions()
         connections = [
             (c.zone1.strip(), c.zone2.strip())
@@ -239,8 +304,10 @@ class TemplateScene(QGraphicsScene):
         if not mapping:
             return None
 
-        # Check if it's a no-op
-        if all(old == new for old, new in mapping.items()):
+        # Check if it's a no-op (skip for dedup since we need to finalize)
+        if not needs_dedup and all(
+            old == new for old, new in mapping.items()
+        ):
             return None
 
         # Update zone IDs
