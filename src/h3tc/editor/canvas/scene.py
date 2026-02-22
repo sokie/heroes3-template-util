@@ -304,12 +304,6 @@ class TemplateScene(QGraphicsScene):
         if not mapping:
             return None
 
-        # Check if it's a no-op (skip for dedup since we need to finalize)
-        if not needs_dedup and all(
-            old == new for old, new in mapping.items()
-        ):
-            return None
-
         # Update zone IDs
         for zone in self._template_map.zones:
             old_id = zone.id.strip()
@@ -318,6 +312,12 @@ class TemplateScene(QGraphicsScene):
 
         # Reorder zones list by new ID so save validation won't re-number
         self._template_map.zones.sort(key=lambda z: int(z.id.strip()))
+
+        # Check if it's a no-op (IDs unchanged AND list already ordered)
+        if not needs_dedup and all(
+            old == new for old, new in mapping.items()
+        ):
+            return None
 
         # Update connection references
         for conn in self._template_map.connections:
