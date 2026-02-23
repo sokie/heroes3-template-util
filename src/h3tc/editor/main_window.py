@@ -5,6 +5,7 @@ from pathlib import Path
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QActionGroup, QKeySequence
 from PySide6.QtWidgets import (
+    QComboBox,
     QFileDialog,
     QHBoxLayout,
     QMainWindow,
@@ -18,10 +19,11 @@ from PySide6.QtWidgets import (
 )
 
 from h3tc.editor.canvas.scene import TemplateScene
-from h3tc.editor.constants import DisplayMode, ThemeManager, THEME_HIGH_CONTRAST, THEME_LIGHT
+from h3tc.editor.constants import DisplayMode, Theme, ThemeManager, THEME_HIGH_CONTRAST, THEME_LIGHT
 from h3tc.editor.canvas.view import TemplateView
 from h3tc.editor.models.editor_state import EditorState
 from h3tc.editor.models.layout_store import load_layout, save_layout
+from h3tc.editor.models.theme_store import load_themes, save_themes
 from h3tc.editor.panels.connection_panel import ConnectionPanel
 from h3tc.editor.panels.map_panel import MapPanel
 from h3tc.editor.panels.map_selector import MapSelector
@@ -66,6 +68,18 @@ class MainWindow(QMainWindow):
         self._build_statusbar()
         self._connect_signals()
         self._update_title()
+
+        # Load persisted themes (all 3 presets)
+        result = load_themes()
+        if result:
+            self._themes, active = result
+            ThemeManager().set_theme(self._themes[active])
+        else:
+            self._themes: dict[str, Theme] = {
+                "Default": THEME_LIGHT,
+                "High Contrast": THEME_HIGH_CONTRAST,
+                "Custom": Theme(name="Custom"),
+            }
 
     # ── Build UI ─────────────────────────────────────────────────────────
 
@@ -141,11 +155,12 @@ class MainWindow(QMainWindow):
         self._mode_group.addAction(self._act_mode_details)
         self._mode_group.addAction(self._act_mode_zone_id)
 
-        self._act_high_contrast = QAction("High Contrast", self)
-        self._act_high_contrast.setCheckable(True)
-        self._act_high_contrast.setChecked(False)
-        self._act_high_contrast.setShortcut(QKeySequence("Ctrl+Shift+H"))
-        self._act_high_contrast.setToolTip("Toggle high contrast theme (Ctrl+Shift+H)")
+        self._theme_combo = QComboBox()
+        self._theme_combo.addItems(["Default", "High Contrast", "Custom"])
+        self._theme_combo.setToolTip("Switch theme preset")
+
+        self._act_theme_settings = QAction("Theme...", self)
+        self._act_theme_settings.setToolTip("Customize theme colors and sizes")
 
     def _build_toolbar(self) -> None:
         toolbar = QToolBar("Main")
@@ -171,7 +186,7 @@ class MainWindow(QMainWindow):
         toolbar.addAction(self._act_mode_details)
         toolbar.addAction(self._act_mode_zone_id)
         toolbar.addSeparator()
-        toolbar.addAction(self._act_high_contrast)
+        toolbar.addWidget(self._theme_combo)
 
     def _build_menubar(self) -> None:
         mb = self.menuBar()
@@ -203,8 +218,8 @@ class MainWindow(QMainWindow):
         view_menu.addSeparator()
         view_menu.addAction(self._act_mode_details)
         view_menu.addAction(self._act_mode_zone_id)
-        view_menu.addSeparator()
-        view_menu.addAction(self._act_high_contrast)
+        settings_menu = mb.addMenu("&Settings")
+        settings_menu.addAction(self._act_theme_settings)
 
     def _build_ui(self) -> None:
         central = QWidget()
@@ -272,7 +287,9 @@ class MainWindow(QMainWindow):
         self._act_reid_dfs.triggered.connect(lambda: self._on_reid_zones("dfs"))
         self._act_reid_bfs.triggered.connect(lambda: self._on_reid_zones("bfs"))
         self._mode_group.triggered.connect(self._on_display_mode_changed)
-        self._act_high_contrast.toggled.connect(self._on_high_contrast_toggled)
+        self._theme_combo.currentIndexChanged.connect(self._on_theme_combo_changed)
+        self._act_theme_settings.triggered.connect(self._on_theme_settings)
+        ThemeManager().theme_changed.connect(self._on_theme_changed_sync)
 
         # Scene selection
         self._scene.zone_selected.connect(self._on_zone_selected)
@@ -657,12 +674,33 @@ class MainWindow(QMainWindow):
         mode = mode_map.get(action, DisplayMode.DETAILS)
         self._scene.display_mode = mode
 
-    def _on_high_contrast_toggled(self, checked: bool) -> None:
-        theme = THEME_HIGH_CONTRAST if checked else THEME_LIGHT
+    def _on_theme_combo_changed(self, index: int) -> None:
+        names = ["Default", "High Contrast", "Custom"]
+        name = names[index]
+        theme = self._themes[name]
         ThemeManager().set_theme(theme)
-        self._statusbar.showMessage(
-            f"Theme: {theme.name}"
-        )
+        save_themes(self._themes, name)
+        self._statusbar.showMessage(f"Theme: {theme.name}")
+
+    def _on_theme_settings(self) -> None:
+        from h3tc.editor.theme_dialog import ThemeDialog
+
+        active = ThemeManager().theme.name
+        if active not in self._themes:
+            active = "Default"
+        dialog = ThemeDialog(self._themes, active, parent=self)
+        if dialog.exec() == ThemeDialog.DialogCode.Accepted:
+            # Reload from dialog's working copy after OK
+            self._themes = dialog.themes
+
+    def _on_theme_changed_sync(self) -> None:
+        """Sync theme combo when theme changes externally."""
+        names = ["Default", "High Contrast", "Custom"]
+        current = ThemeManager().theme.name
+        if current in names:
+            self._theme_combo.blockSignals(True)
+            self._theme_combo.setCurrentIndex(names.index(current))
+            self._theme_combo.blockSignals(False)
 
     def _on_spread_compact(self, factor: float) -> None:
         """Spread or compact zones while preserving viewport center."""
