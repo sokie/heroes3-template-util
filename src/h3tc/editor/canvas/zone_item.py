@@ -39,9 +39,20 @@ from h3tc.models import Zone
 _ICO = 52           # Icon size in pixels
 _CELL_W = _ICO + 14 # Cell width: icon + padding (count goes below, not beside)
 _MARGIN = 16        # Margin inside zone rect
-_HEADER_H = _ICO + 20 # Height for header row (chest+treasure, swords)
-_ROW_H = _ICO + 28  # Height per content row (icon + count text below)
 _COLS = 5           # Icons per row
+
+
+def _header_h() -> int:
+    """Header row height: adapts to treasure font size."""
+    t = _theme()
+    return max(_ICO + 20, t.font_treasure + _ICO // 2 + 10)
+
+
+def _row_h() -> int:
+    """Content row height: adapts to count font size."""
+    t = _theme()
+    count_h = max(t.font_count + 6, 26)
+    return _ICO + count_h + 4
 
 
 def _theme():
@@ -168,7 +179,7 @@ def zone_size(zone: Zone) -> tuple[float, float]:
     w = max(header_w + _MARGIN * 2, content_w, scale * 3, 160)
 
     # Height: header + content rows + ID line + margins
-    content_h = _HEADER_H + rows * _ROW_H + _MARGIN * 2 + 40
+    content_h = _header_h() + rows * _row_h() + _MARGIN * 2 + 40
     h = max(content_h, scale * 2, 110)
 
     # Keep zones square
@@ -219,7 +230,8 @@ def _draw_icon_with_count(
     draw_fn(painter, ix, iy, icon_size)
     t = _theme()
     # Count text centered below icon (extra bold for readability)
-    count_rect = QRectF(ix - 4, iy + icon_size + 2, icon_size + 8, 26)
+    count_h = max(t.font_count + 6, 26)
+    count_rect = QRectF(ix - 4, iy + icon_size + 2, icon_size + 8, count_h)
     _draw_text(
         painter, _make_font(t.font_count, extra_bold=True), count_rect,
         Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop,
@@ -331,6 +343,10 @@ class ZoneItem(QGraphicsRectItem):
         # Calculate swords position first so we can constrain treasure label
         sx = rect.x() + rect.width() - _MARGIN - _ICO if strength > 0 else 0
 
+        # Draw swords first so treasure text renders on top if they overlap
+        if strength > 0:
+            draw_swords(painter, sx, oy, _ICO, strength)
+
         if tval > 0:
             draw_treasure_chest(painter, hx, oy, _ICO)
             hx += _ICO + 8
@@ -341,9 +357,6 @@ class ZoneItem(QGraphicsRectItem):
             draw_value_label(painter, hx, oy, max_label_w, _ICO, str(tval),
                              t.font_treasure, dark_bg)
             hx += max_label_w + 4
-
-        if strength > 0:
-            draw_swords(painter, sx, oy, _ICO, strength)
 
         # ── Zone ID (bottom-right) ───────────────────────────
         id_h = 34
@@ -379,7 +392,7 @@ class ZoneItem(QGraphicsRectItem):
             _draw_text(painter, id_font, id_rect, id_flags, id_text, dark_bg)
 
         # ── Content rows: icons with counts below ────────────
-        cy = oy + _HEADER_H
+        cy = oy + _header_h()
         cx = ox
 
         if _has_towns(zone):
@@ -419,7 +432,7 @@ class ZoneItem(QGraphicsRectItem):
                     _draw_icon_with_count(
                         painter, draw_town, ix, cy,
                         _ICO, str(p_t), dark_bg)
-                cy += _ROW_H
+                cy += _row_h()
 
             # Neutral buildings row
             if has_neutral:
@@ -444,7 +457,7 @@ class ZoneItem(QGraphicsRectItem):
                     _draw_icon_with_count(
                         painter, draw_town, ix, cy,
                         _ICO, str(n_t), dark_bg)
-                cy += _ROW_H
+                cy += _row_h()
 
         # Resource mines: icon on top, count below
         mines = _active_mines(zone)
@@ -452,14 +465,14 @@ class ZoneItem(QGraphicsRectItem):
             for i, (res, mc, md) in enumerate(mines):
                 col = i % _COLS
                 if i > 0 and col == 0:
-                    cy += _ROW_H
+                    cy += _row_h()
                 ix = cx + col * _CELL_W
                 label = f"{mc}/{md}" if md > 0 else str(mc)
                 _draw_icon_with_count(
                     painter,
                     lambda p, x, y, s, r=res: draw_mine(p, x, y, s, r),
                     ix, cy, _ICO, label, dark_bg)
-            cy += _ROW_H
+            cy += _row_h()
 
     def center_point(self):
         rect = self.rect()

@@ -2,13 +2,25 @@
 
 import dataclasses
 import json
+import sys
 from pathlib import Path
 
 from h3tc.editor.constants import Theme
 
-_THEME_DIR = Path.home() / ".h3tc"
-_THEME_FILE = _THEME_DIR / "theme.json"
 _VERSION = 2
+
+
+def _app_dir() -> Path:
+    """Directory containing the application (next to .exe or project root)."""
+    if getattr(sys, "frozen", False):
+        # PyInstaller bundle: sys.executable is the .exe
+        return Path(sys.executable).parent
+    # Development: use the project root (where pyproject.toml lives)
+    return Path(__file__).resolve().parents[4]
+
+
+def _theme_file() -> Path:
+    return _app_dir() / "theme.json"
 
 
 def _serialize_theme(theme: Theme) -> dict:
@@ -40,26 +52,26 @@ def _deserialize_theme(theme_data: dict) -> Theme:
 
 
 def save_themes(themes: dict[str, Theme], active: str) -> None:
-    """Serialize all 3 presets + active name to ~/.h3tc/theme.json."""
+    """Serialize all 3 presets + active name to theme.json next to the app."""
     data = {
         "version": _VERSION,
         "active": active,
         "themes": {name: _serialize_theme(t) for name, t in themes.items()},
     }
-    _THEME_DIR.mkdir(parents=True, exist_ok=True)
-    _THEME_FILE.write_text(json.dumps(data, indent=2) + "\n", "utf-8")
+    _theme_file().write_text(json.dumps(data, indent=2) + "\n", "utf-8")
 
 
 def load_themes() -> tuple[dict[str, Theme], str] | None:
-    """Load all saved presets from ~/.h3tc/theme.json.
+    """Load all saved presets from theme.json next to the app.
 
     Returns (themes_dict, active_name) or None on missing/corrupt/version-mismatch.
     """
-    if not _THEME_FILE.exists():
+    path = _theme_file()
+    if not path.exists():
         return None
 
     try:
-        raw = json.loads(_THEME_FILE.read_text("utf-8"))
+        raw = json.loads(path.read_text("utf-8"))
     except (json.JSONDecodeError, OSError):
         return None
 
