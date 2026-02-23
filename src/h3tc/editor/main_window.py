@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtGui import QAction, QActionGroup, QKeySequence
 from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 )
 
 from h3tc.editor.canvas.scene import TemplateScene
+from h3tc.editor.constants import DisplayMode
 from h3tc.editor.canvas.view import TemplateView
 from h3tc.editor.models.editor_state import EditorState
 from h3tc.editor.models.layout_store import load_layout, save_layout
@@ -125,6 +126,21 @@ class MainWindow(QMainWindow):
             "Re-ID zones using breadth-first traversal — good for wide/horizontal maps"
         )
 
+        # Display mode actions
+        self._act_mode_details = QAction("Details", self)
+        self._act_mode_details.setCheckable(True)
+        self._act_mode_details.setChecked(True)
+        self._act_mode_details.setToolTip("Show full zone details")
+
+        self._act_mode_zone_id = QAction("Zone ID", self)
+        self._act_mode_zone_id.setCheckable(True)
+        self._act_mode_zone_id.setToolTip("Show only zone ID")
+
+        self._mode_group = QActionGroup(self)
+        self._mode_group.setExclusive(True)
+        self._mode_group.addAction(self._act_mode_details)
+        self._mode_group.addAction(self._act_mode_zone_id)
+
     def _build_toolbar(self) -> None:
         toolbar = QToolBar("Main")
         toolbar.setMovable(False)
@@ -145,6 +161,9 @@ class MainWindow(QMainWindow):
         toolbar.addSeparator()
         toolbar.addAction(self._act_reid_dfs)
         toolbar.addAction(self._act_reid_bfs)
+        toolbar.addSeparator()
+        toolbar.addAction(self._act_mode_details)
+        toolbar.addAction(self._act_mode_zone_id)
 
     def _build_menubar(self) -> None:
         mb = self.menuBar()
@@ -173,6 +192,9 @@ class MainWindow(QMainWindow):
         view_menu.addAction(self._act_compact)
         view_menu.addSeparator()
         view_menu.addAction(self._act_snap_grid)
+        view_menu.addSeparator()
+        view_menu.addAction(self._act_mode_details)
+        view_menu.addAction(self._act_mode_zone_id)
 
     def _build_ui(self) -> None:
         central = QWidget()
@@ -239,6 +261,7 @@ class MainWindow(QMainWindow):
         self._act_snap_grid.toggled.connect(self._on_snap_toggled)
         self._act_reid_dfs.triggered.connect(lambda: self._on_reid_zones("dfs"))
         self._act_reid_bfs.triggered.connect(lambda: self._on_reid_zones("bfs"))
+        self._mode_group.triggered.connect(self._on_display_mode_changed)
 
         # Scene selection
         self._scene.zone_selected.connect(self._on_zone_selected)
@@ -614,6 +637,14 @@ class MainWindow(QMainWindow):
         self._statusbar.showMessage(
             "Snap to grid: ON" if checked else "Snap to grid: OFF"
         )
+
+    def _on_display_mode_changed(self, action: QAction) -> None:
+        mode_map = {
+            self._act_mode_details: DisplayMode.DETAILS,
+            self._act_mode_zone_id: DisplayMode.ZONE_ID,
+        }
+        mode = mode_map.get(action, DisplayMode.DETAILS)
+        self._scene.display_mode = mode
 
     def _on_spread_compact(self, factor: float) -> None:
         """Spread or compact zones while preserving viewport center."""

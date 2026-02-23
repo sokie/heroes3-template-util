@@ -1,6 +1,13 @@
 """Visual constants for the template editor."""
 
+from enum import Enum
+
 from PySide6.QtGui import QColor
+
+
+class DisplayMode(Enum):
+    DETAILS = "details"
+    ZONE_ID = "zone_id"
 
 # Grid
 GRID_SIZE = 20

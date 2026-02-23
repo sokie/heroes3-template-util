@@ -28,6 +28,7 @@ from h3tc.editor.canvas.icons import (
 )
 from h3tc.editor.constants import (
     SELECTION_COLOR,
+    DisplayMode,
     ZONE_BORDER_WIDTH,
     ZONE_COLORS,
     ZONE_CORNER_RADIUS,
@@ -262,12 +263,19 @@ class ZoneItem(QGraphicsRectItem):
         option: QStyleOptionGraphicsItem,
         widget: QWidget | None = None,
     ) -> None:
-        rect = self.rect()
-        zone = self.zone
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        self._paint_background(painter)
 
-        # ── Background ───────────────────────────────────────
-        is_junction = zone.junction.strip().lower() == "x"
+        scene = self.scene()
+        mode = getattr(scene, 'display_mode', DisplayMode.DETAILS)
+        if mode == DisplayMode.ZONE_ID:
+            self._paint_zone_id(painter)
+        else:
+            self._paint_details(painter)
+
+    def _paint_background(self, painter: QPainter) -> None:
+        rect = self.rect()
+        is_junction = self.zone.junction.strip().lower() == "x"
         if is_junction:
             rim_w = min(rect.width(), rect.height()) * 0.16
             painter.setPen(Qt.PenStyle.NoPen)
@@ -286,6 +294,20 @@ class ZoneItem(QGraphicsRectItem):
             painter.setBrush(QBrush(self._color))
             painter.drawRoundedRect(rect, ZONE_CORNER_RADIUS, ZONE_CORNER_RADIUS)
 
+    def _paint_zone_id(self, painter: QPainter) -> None:
+        rect = self.rect()
+        dark_bg = _is_dark_bg(self._color)
+        font_size = int(min(rect.width(), rect.height()) * 0.45)
+        font = _make_font(font_size, extra_bold=True)
+        _draw_text(
+            painter, font, rect,
+            Qt.AlignmentFlag.AlignCenter,
+            self.zone.id.strip(), dark_bg,
+        )
+
+    def _paint_details(self, painter: QPainter) -> None:
+        rect = self.rect()
+        zone = self.zone
         dark_bg = _is_dark_bg(self._color)
 
         ox = rect.x() + _MARGIN

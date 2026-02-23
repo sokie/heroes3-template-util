@@ -10,6 +10,7 @@ from h3tc.editor.canvas.layout import (
     image_settings_layout,
 )
 from h3tc.editor.canvas.zone_item import ZoneItem
+from h3tc.editor.constants import DisplayMode
 from h3tc.models import Connection, TemplateMap, Zone
 
 
@@ -27,6 +28,7 @@ class TemplateScene(QGraphicsScene):
         self._connection_items: list[ConnectionItem] = []
         self._template_map: TemplateMap | None = None
         self._snap_to_grid = False
+        self._display_mode = DisplayMode.DETAILS
         self.selectionChanged.connect(self._on_selection_changed)
 
     @property
@@ -36,6 +38,16 @@ class TemplateScene(QGraphicsScene):
     @snap_to_grid.setter
     def snap_to_grid(self, enabled: bool) -> None:
         self._snap_to_grid = enabled
+
+    @property
+    def display_mode(self) -> DisplayMode:
+        return self._display_mode
+
+    @display_mode.setter
+    def display_mode(self, mode: DisplayMode) -> None:
+        self._display_mode = mode
+        for item in self._zone_items.values():
+            item.update()
 
     @property
     def template_map(self) -> TemplateMap | None:
