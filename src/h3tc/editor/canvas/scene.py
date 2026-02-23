@@ -10,7 +10,7 @@ from h3tc.editor.canvas.layout import (
     image_settings_layout,
 )
 from h3tc.editor.canvas.zone_item import ZoneItem
-from h3tc.editor.constants import DisplayMode
+from h3tc.editor.constants import DisplayMode, ThemeManager
 from h3tc.models import Connection, TemplateMap, Zone
 
 
@@ -30,6 +30,7 @@ class TemplateScene(QGraphicsScene):
         self._snap_to_grid = False
         self._display_mode = DisplayMode.DETAILS
         self.selectionChanged.connect(self._on_selection_changed)
+        ThemeManager().theme_changed.connect(self._on_theme_changed)
 
     @property
     def snap_to_grid(self) -> bool:
@@ -353,6 +354,13 @@ class TemplateScene(QGraphicsScene):
 
         self.scene_modified.emit()
         return mapping
+
+    def _on_theme_changed(self) -> None:
+        """Refresh all items when the theme changes."""
+        for item in self._zone_items.values():
+            item.refresh()
+        for ci in self._connection_items:
+            ci.update()
 
     def _on_selection_changed(self) -> None:
         selected = self.selectedItems()

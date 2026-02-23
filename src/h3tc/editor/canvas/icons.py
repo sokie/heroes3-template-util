@@ -15,12 +15,17 @@ from PySide6.QtGui import (
     QPolygonF,
 )
 
-_BLACK = QColor(30, 30, 30)
+from h3tc.editor.constants import ThemeManager
+
+
+def _outline_color() -> QColor:
+    t = ThemeManager().theme
+    return QColor(*t.icon_outline_color)
 
 
 def _pen(s: float) -> QPen:
     """Outline pen scaled to icon size."""
-    return QPen(_BLACK, max(s * 0.08, 1.0), Qt.PenStyle.SolidLine,
+    return QPen(_outline_color(), max(s * 0.08, 1.0), Qt.PenStyle.SolidLine,
                 Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
 
 
@@ -62,7 +67,7 @@ def draw_treasure_chest(painter: QPainter, x: float, y: float, size: float) -> N
     ]
     for gx, gy, gc in gems:
         painter.setBrush(QBrush(gc))
-        painter.setPen(QPen(_BLACK, s * 0.04))
+        painter.setPen(QPen(_outline_color(), s * 0.04))
         painter.drawEllipse(QPointF(gx, gy), s * 0.07, s * 0.07)
 
     painter.restore()
@@ -182,7 +187,7 @@ def _draw_one_sword(painter: QPainter, cx: float, cy: float, s: float,
 
     if colored:
         lw = max(s * 0.06, 0.6)
-        outline_c = _BLACK
+        outline_c = _outline_color()
         blade_c = QColor(170, 185, 200)
         blade_hi = QColor(210, 220, 235)
         blade_dark = QColor(120, 130, 145)
@@ -471,7 +476,7 @@ def _draw_mercury(painter: QPainter, x: float, y: float, s: float) -> None:
     cx = s / 2
 
     # Wood logs under the cauldron (crossed)
-    wood_pen = QPen(_BLACK, max(s * 0.04, 0.6), Qt.PenStyle.SolidLine,
+    wood_pen = QPen(_outline_color(), max(s * 0.04, 0.6), Qt.PenStyle.SolidLine,
                     Qt.PenCapStyle.RoundCap)
     painter.setPen(wood_pen)
 

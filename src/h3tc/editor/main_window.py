@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 )
 
 from h3tc.editor.canvas.scene import TemplateScene
-from h3tc.editor.constants import DisplayMode
+from h3tc.editor.constants import DisplayMode, ThemeManager, THEME_HIGH_CONTRAST, THEME_LIGHT
 from h3tc.editor.canvas.view import TemplateView
 from h3tc.editor.models.editor_state import EditorState
 from h3tc.editor.models.layout_store import load_layout, save_layout
@@ -141,6 +141,12 @@ class MainWindow(QMainWindow):
         self._mode_group.addAction(self._act_mode_details)
         self._mode_group.addAction(self._act_mode_zone_id)
 
+        self._act_high_contrast = QAction("High Contrast", self)
+        self._act_high_contrast.setCheckable(True)
+        self._act_high_contrast.setChecked(False)
+        self._act_high_contrast.setShortcut(QKeySequence("Ctrl+Shift+H"))
+        self._act_high_contrast.setToolTip("Toggle high contrast theme (Ctrl+Shift+H)")
+
     def _build_toolbar(self) -> None:
         toolbar = QToolBar("Main")
         toolbar.setMovable(False)
@@ -164,6 +170,8 @@ class MainWindow(QMainWindow):
         toolbar.addSeparator()
         toolbar.addAction(self._act_mode_details)
         toolbar.addAction(self._act_mode_zone_id)
+        toolbar.addSeparator()
+        toolbar.addAction(self._act_high_contrast)
 
     def _build_menubar(self) -> None:
         mb = self.menuBar()
@@ -195,6 +203,8 @@ class MainWindow(QMainWindow):
         view_menu.addSeparator()
         view_menu.addAction(self._act_mode_details)
         view_menu.addAction(self._act_mode_zone_id)
+        view_menu.addSeparator()
+        view_menu.addAction(self._act_high_contrast)
 
     def _build_ui(self) -> None:
         central = QWidget()
@@ -262,6 +272,7 @@ class MainWindow(QMainWindow):
         self._act_reid_dfs.triggered.connect(lambda: self._on_reid_zones("dfs"))
         self._act_reid_bfs.triggered.connect(lambda: self._on_reid_zones("bfs"))
         self._mode_group.triggered.connect(self._on_display_mode_changed)
+        self._act_high_contrast.toggled.connect(self._on_high_contrast_toggled)
 
         # Scene selection
         self._scene.zone_selected.connect(self._on_zone_selected)
@@ -645,6 +656,13 @@ class MainWindow(QMainWindow):
         }
         mode = mode_map.get(action, DisplayMode.DETAILS)
         self._scene.display_mode = mode
+
+    def _on_high_contrast_toggled(self, checked: bool) -> None:
+        theme = THEME_HIGH_CONTRAST if checked else THEME_LIGHT
+        ThemeManager().set_theme(theme)
+        self._statusbar.showMessage(
+            f"Theme: {theme.name}"
+        )
 
     def _on_spread_compact(self, factor: float) -> None:
         """Spread or compact zones while preserving viewport center."""

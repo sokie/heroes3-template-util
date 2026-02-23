@@ -11,10 +11,10 @@ from PySide6.QtWidgets import (
 
 from h3tc.editor.constants import (
     CONNECTION_COLOR,
-    CONNECTION_LABEL_FONT_SIZE,
     CONNECTION_SELECTED_COLOR,
     CONNECTION_WIDE_WIDTH,
     CONNECTION_WIDTH,
+    ThemeManager,
 )
 from h3tc.models import Connection
 
@@ -133,6 +133,7 @@ class ConnectionItem(QGraphicsPathItem):
         widget: QWidget | None = None,
     ) -> None:
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        t = ThemeManager().theme
 
         color = CONNECTION_SELECTED_COLOR if self.isSelected() else CONNECTION_COLOR
         pen = QPen(color, self._line_width)
@@ -141,7 +142,7 @@ class ConnectionItem(QGraphicsPathItem):
         label = self._label
         if label:
             # Measure label to create gap in line
-            font = QFont("Helvetica Neue", CONNECTION_LABEL_FONT_SIZE, QFont.Weight.Bold)
+            font = QFont("Helvetica Neue", t.font_connection_label, QFont.Weight.Bold)
             font.setStyleHint(QFont.StyleHint.SansSerif)
             painter.setFont(font)
             fm = painter.fontMetrics()
@@ -176,19 +177,25 @@ class ConnectionItem(QGraphicsPathItem):
                 painter.setPen(pen)
                 painter.drawLine(self._p1, self._p2)
 
-            # Draw label at midpoint with white pill background
+            # Draw label at midpoint with pill background
             bg_rect = QRectF(
                 self._midpoint.x() - label_w / 2,
                 self._midpoint.y() - label_h / 2,
                 label_w,
                 label_h,
             )
-            # White translucent rounded-rect pill
-            painter.setPen(QPen(color, 1))
-            painter.setBrush(QBrush(QColor(255, 255, 255, 220)))
+            # Pill background
+            pill_bg = QColor(*t.connection_label_pill_bg)
+            if t.connection_label_border:
+                border_color = QColor(*t.connection_label_border)
+                painter.setPen(QPen(border_color, t.connection_label_border_width))
+            else:
+                painter.setPen(QPen(color, 1))
+            painter.setBrush(QBrush(pill_bg))
             painter.drawRoundedRect(bg_rect, label_h / 2, label_h / 2)
-            # Red label text
-            painter.setPen(QPen(QColor(200, 40, 40)))
+            # Label text (charcoal, not red)
+            label_color = QColor(*t.connection_label_color)
+            painter.setPen(QPen(label_color))
             painter.drawText(bg_rect, Qt.AlignmentFlag.AlignCenter, label)
         else:
             # No label, draw full line

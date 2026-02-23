@@ -5,14 +5,12 @@ from PySide6.QtGui import QColor, QPainter, QPen, QWheelEvent, QMouseEvent
 from PySide6.QtWidgets import QGestureEvent, QGraphicsView, QPinchGesture
 
 from h3tc.editor.constants import (
-    CANVAS_BG_COLOR,
-    GRID_COLOR,
-    GRID_MAJOR_COLOR,
     GRID_MAJOR_EVERY,
     GRID_SIZE,
     MAX_ZOOM,
     MIN_ZOOM,
     ZOOM_FACTOR,
+    ThemeManager,
 )
 
 
@@ -33,20 +31,32 @@ class TemplateView(QGraphicsView):
         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
         self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorViewCenter)
         self.setViewportUpdateMode(QGraphicsView.ViewportUpdateMode.FullViewportUpdate)
-        self.setBackgroundBrush(CANVAS_BG_COLOR)
+        self._apply_theme_bg()
         self.setMinimumSize(400, 300)
 
         # Enable pinch gesture recognition
         self.grabGesture(Qt.GestureType.PinchGesture)
 
+        # Refresh on theme change
+        ThemeManager().theme_changed.connect(self._on_theme_changed)
+
+    def _apply_theme_bg(self) -> None:
+        t = ThemeManager().theme
+        self.setBackgroundBrush(QColor(*t.canvas_bg))
+
+    def _on_theme_changed(self) -> None:
+        self._apply_theme_bg()
+        self.viewport().update()
+
     def drawBackground(self, painter: QPainter, rect: QRectF) -> None:
         super().drawBackground(painter, rect)
+        t = ThemeManager().theme
 
         left = int(rect.left()) - (int(rect.left()) % GRID_SIZE)
         top = int(rect.top()) - (int(rect.top()) % GRID_SIZE)
 
         # Minor grid lines
-        painter.setPen(QPen(GRID_COLOR, 0.7))
+        painter.setPen(QPen(QColor(*t.grid_color), t.grid_minor_width))
         x = left
         while x <= rect.right():
             if (x // GRID_SIZE) % GRID_MAJOR_EVERY != 0:
@@ -60,7 +70,7 @@ class TemplateView(QGraphicsView):
             y += GRID_SIZE
 
         # Major grid lines
-        painter.setPen(QPen(GRID_MAJOR_COLOR, 1.0))
+        painter.setPen(QPen(QColor(*t.grid_major_color), t.grid_major_width))
         x = left
         while x <= rect.right():
             if (x // GRID_SIZE) % GRID_MAJOR_EVERY == 0:

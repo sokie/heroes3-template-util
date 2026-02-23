@@ -29,11 +29,8 @@ from h3tc.editor.canvas.icons import (
 from h3tc.editor.constants import (
     SELECTION_COLOR,
     DisplayMode,
-    ZONE_BORDER_WIDTH,
-    ZONE_COLORS,
-    ZONE_CORNER_RADIUS,
-    ZONE_SELECTED_BORDER_WIDTH,
     ZONE_SIZE_SCALE,
+    ThemeManager,
 )
 from h3tc.enums import RESOURCES
 from h3tc.models import Zone
@@ -46,30 +43,30 @@ _HEADER_H = _ICO + 20 # Height for header row (chest+treasure, swords)
 _ROW_H = _ICO + 28  # Height per content row (icon + count text below)
 _COLS = 5           # Icons per row
 
-# Font sizes (scene-coordinate points)
-_FONT_TREASURE = 34  # Treasure value next to chest
-_FONT_ZONE_ID = 28   # Zone ID in bottom-right corner
-_FONT_LABEL = 22     # P: / N: row labels
-_FONT_COUNT = 22     # Count values below icons
+
+def _theme():
+    return ThemeManager().theme
 
 
 def _zone_color(zone: Zone) -> QColor:
     """Zone color based on type and treasure value.
 
-    Player start = player color from constants.
+    Player start = player color from theme.
     Non-player zones colored by treasure value.
     """
+    t = _theme()
     if zone.human_start == "x" or zone.computer_start == "x":
         owner = zone.ownership.strip()
-        colors = ZONE_COLORS["human_start"]
-        return colors.get(owner, colors["0"])
+        colors = t.zone_player_colors
+        rgb = colors.get(owner, colors["0"])
+        return QColor(*rgb)
 
     tval = _treasure_value(zone)
     if tval >= 200:
-        return QColor(215, 195, 140)    # Pastel gold
+        return QColor(*t.zone_treasure_high)
     if tval >= 100:
-        return QColor(190, 195, 205)    # Pastel silver
-    return QColor(218, 218, 218)        # Light gray
+        return QColor(*t.zone_treasure_mid)
+    return QColor(*t.zone_treasure_low)
 
 
 def _int_val(s: str) -> int:
@@ -201,7 +198,15 @@ def _draw_text(
     dark_bg: bool = True,
 ) -> None:
     painter.setFont(font)
-    fg = QColor(255, 255, 255) if dark_bg else QColor(30, 30, 30)
+    t = _theme()
+    if dark_bg:
+        # Text shadow for readability
+        if t.text_shadow:
+            painter.setPen(QPen(QColor(0, 0, 0, 120)))
+            painter.drawText(rect.adjusted(1, 1, 1, 1), flags, text)
+        fg = QColor(255, 255, 255)
+    else:
+        fg = QColor(30, 30, 30)
     painter.setPen(QPen(fg))
     painter.drawText(rect, flags, text)
 
@@ -212,10 +217,11 @@ def _draw_icon_with_count(
 ) -> None:
     """Draw an icon with its count centered below it."""
     draw_fn(painter, ix, iy, icon_size)
+    t = _theme()
     # Count text centered below icon (extra bold for readability)
     count_rect = QRectF(ix - 4, iy + icon_size + 2, icon_size + 8, 26)
     _draw_text(
-        painter, _make_font(_FONT_COUNT, extra_bold=True), count_rect,
+        painter, _make_font(t.font_count, extra_bold=True), count_rect,
         Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop,
         count, dark_bg,
     )
@@ -254,8 +260,9 @@ class ZoneItem(QGraphicsRectItem):
         self.update()
 
     def _update_appearance(self) -> None:
+        t = _theme()
         self.setBrush(QBrush(self._color))
-        self.setPen(QPen(self._color.darker(140), ZONE_BORDER_WIDTH))
+        self.setPen(QPen(self._color.darker(t.zone_border_darken), t.zone_border_width))
 
     def paint(
         self,
@@ -274,25 +281,27 @@ class ZoneItem(QGraphicsRectItem):
             self._paint_details(painter)
 
     def _paint_background(self, painter: QPainter) -> None:
+        t = _theme()
         rect = self.rect()
+        corner_r = t.zone_corner_radius
         is_junction = self.zone.junction.strip().lower() == "x"
         if is_junction:
             rim_w = min(rect.width(), rect.height()) * 0.16
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(QBrush(QColor(120, 120, 120)))
-            painter.drawRoundedRect(rect, ZONE_CORNER_RADIUS, ZONE_CORNER_RADIUS)
+            painter.drawRoundedRect(rect, corner_r, corner_r)
             inner = rect.adjusted(rim_w, rim_w, -rim_w, -rim_w)
-            inner_r = max(ZONE_CORNER_RADIUS - rim_w * 0.5, 1)
+            inner_r = max(corner_r - rim_w * 0.5, 1)
             painter.setBrush(QBrush(self._color))
             painter.drawRoundedRect(inner, inner_r, inner_r)
         if self.isSelected():
-            painter.setPen(QPen(SELECTION_COLOR, ZONE_SELECTED_BORDER_WIDTH))
+            painter.setPen(QPen(SELECTION_COLOR, t.zone_selected_border_width))
             painter.setBrush(Qt.BrushStyle.NoBrush if is_junction else QBrush(self._color))
-            painter.drawRoundedRect(rect, ZONE_CORNER_RADIUS, ZONE_CORNER_RADIUS)
+            painter.drawRoundedRect(rect, corner_r, corner_r)
         elif not is_junction:
-            painter.setPen(QPen(self._color.darker(140), ZONE_BORDER_WIDTH))
+            painter.setPen(QPen(self._color.darker(t.zone_border_darken), t.zone_border_width))
             painter.setBrush(QBrush(self._color))
-            painter.drawRoundedRect(rect, ZONE_CORNER_RADIUS, ZONE_CORNER_RADIUS)
+            painter.drawRoundedRect(rect, corner_r, corner_r)
 
     def _paint_zone_id(self, painter: QPainter) -> None:
         rect = self.rect()
@@ -306,6 +315,7 @@ class ZoneItem(QGraphicsRectItem):
         )
 
     def _paint_details(self, painter: QPainter) -> None:
+        t = _theme()
         rect = self.rect()
         zone = self.zone
         dark_bg = _is_dark_bg(self._color)
@@ -329,7 +339,7 @@ class ZoneItem(QGraphicsRectItem):
             if strength > 0:
                 max_label_w = max(sx - hx - 8, 40)
             draw_value_label(painter, hx, oy, max_label_w, _ICO, str(tval),
-                             _FONT_TREASURE, dark_bg)
+                             t.font_treasure, dark_bg)
             hx += max_label_w + 4
 
         if strength > 0:
@@ -343,7 +353,7 @@ class ZoneItem(QGraphicsRectItem):
 
         # Measure ID text width to position PC icon correctly
         id_text = zone.id.strip()
-        id_font = _make_font(_FONT_ZONE_ID)
+        id_font = _make_font(t.font_zone_id)
         from PySide6.QtGui import QFontMetrics
         id_fm = QFontMetrics(id_font)
         id_text_w = id_fm.horizontalAdvance(id_text)
@@ -375,7 +385,7 @@ class ZoneItem(QGraphicsRectItem):
         if _has_towns(zone):
             pt = zone.player_towns
             nt = zone.neutral_towns
-            label_font = _make_font(_FONT_LABEL)
+            label_font = _make_font(t.font_label)
             fg = QColor(255, 255, 255) if dark_bg else QColor(30, 30, 30)
             label_w = 38
 
