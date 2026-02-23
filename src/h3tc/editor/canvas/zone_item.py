@@ -318,34 +318,55 @@ class ZoneItem(QGraphicsRectItem):
         strength = _monster_strength(zone)
         hx = ox
 
+        # Calculate swords position first so we can constrain treasure label
+        sx = rect.x() + rect.width() - _MARGIN - _ICO if strength > 0 else 0
+
         if tval > 0:
             draw_treasure_chest(painter, hx, oy, _ICO)
             hx += _ICO + 8
-            draw_value_label(painter, hx, oy, 80, _ICO, str(tval),
+            # Constrain label width to not overlap with swords
+            max_label_w = 80
+            if strength > 0:
+                max_label_w = max(sx - hx - 8, 40)
+            draw_value_label(painter, hx, oy, max_label_w, _ICO, str(tval),
                              _FONT_TREASURE, dark_bg)
-            hx += 84
+            hx += max_label_w + 4
 
         if strength > 0:
-            sx = rect.x() + rect.width() - _MARGIN - _ICO
             draw_swords(painter, sx, oy, _ICO, strength)
 
         # ── Zone ID (bottom-right) ───────────────────────────
         id_h = 34
         id_y = rect.y() + rect.height() - _MARGIN - id_h
+        is_junction = zone.junction.strip().lower() == "x"
         is_computer = zone.computer_start.strip().lower() == "x"
+
+        # Measure ID text width to position PC icon correctly
+        id_text = zone.id.strip()
+        id_font = _make_font(_FONT_ZONE_ID)
+        from PySide6.QtGui import QFontMetrics
+        id_fm = QFontMetrics(id_font)
+        id_text_w = id_fm.horizontalAdvance(id_text)
+
         if is_computer:
             pc_size = 24
-            id_text = zone.id.strip()
-            fm_width = max(len(id_text) * 16, 20)
-            pc_x = rect.x() + rect.width() - _MARGIN - fm_width - pc_size - 6
+            pc_x = rect.x() + rect.width() - _MARGIN - id_text_w - pc_size - 8
             pc_y = id_y + (id_h - pc_size) / 2
             draw_computer_icon(painter, pc_x, pc_y, pc_size)
-        _draw_text(
-            painter, _make_font(_FONT_ZONE_ID),
-            QRectF(ox, id_y, rect.width() - _MARGIN * 2, id_h),
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
-            zone.id.strip(), dark_bg,
-        )
+
+        # Junction zones: ID sits over the dark rim, so force white text
+        # with a dark shadow for readability regardless of inner fill color
+        id_rect = QRectF(ox, id_y, rect.width() - _MARGIN * 2, id_h)
+        id_flags = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        if is_junction:
+            painter.setFont(id_font)
+            painter.setPen(QPen(QColor(0, 0, 0, 160)))
+            shadow_rect = id_rect.translated(1, 1)
+            painter.drawText(shadow_rect, id_flags, id_text)
+            painter.setPen(QPen(QColor(255, 255, 255)))
+            painter.drawText(id_rect, id_flags, id_text)
+        else:
+            _draw_text(painter, id_font, id_rect, id_flags, id_text, dark_bg)
 
         # ── Content rows: icons with counts below ────────────
         cy = oy + _HEADER_H
